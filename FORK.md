@@ -24,6 +24,8 @@ Upstream: `candidate` (not proposed yet), a pull request link with its state, or
 | Restore the sheet after a SCAPE run | #1 | candidate |
 | CI builds against the Micro-Manager nightly the rig runs, and runs the unit tests | #2 | fork-only |
 | Per-camera flip of the Live view (Camera tab), never applied to acquired data | #2 | candidate |
+| The camera panel and the channel table follow loaded settings (they kept stale camera boxes and rows) | (next PR) | candidate |
+| Experiment Setup tab: cameras, one exposure, volume, channels, time points, named positions, configuration groups (lasers in %), Snap, Live, test volume, Stop; a test acquisition shows the Live flip | (next PR) | fork-only |
 
 ## Fork-only pieces
 
