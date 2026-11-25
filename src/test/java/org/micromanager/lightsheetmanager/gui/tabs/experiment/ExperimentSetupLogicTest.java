@@ -132,16 +132,25 @@ public class ExperimentSetupLogicTest {
     }
 
     @Test
-    public void aRangeBetweenStepsRoundsToTheNearestSlice() {
-        assertEquals(11, VolumeRange.slicesFor(10.4, 1.0));
+    public void aRangeBetweenStepsGetsOneSliceMoreNeverOneLess() {
+        // whole slices that cover at least the range asked for
+        assertEquals(12, VolumeRange.slicesFor(10.4, 1.0));
         assertEquals(12, VolumeRange.slicesFor(10.6, 1.0));
+        assertEquals(12, VolumeRange.slicesFor(10.01, 1.0));
+    }
+
+    @Test
+    public void floatingPointNoiseDoesNotAddASlice() {
+        // 100 / 0.1 is 1000.0000000000001 in doubles
+        assertEquals(1001, VolumeRange.slicesFor(100.0, 0.1));
+        assertEquals(31, VolumeRange.slicesFor(3.0, 0.1));
     }
 
     @Test
     public void theRangeShownIsTheOneTheSlicesCover() {
         assertEquals(100.0, VolumeRange.rangeFor(101, 1.0), EPS);
         assertEquals(0.0, VolumeRange.rangeFor(1, 1.0), EPS);
-        assertEquals(10.0, VolumeRange.rangeFor(VolumeRange.slicesFor(10.4, 1.0), 1.0), EPS);
+        assertEquals(11.0, VolumeRange.rangeFor(VolumeRange.slicesFor(10.4, 1.0), 1.0), EPS);
     }
 
     @Test(expected = IllegalArgumentException.class)

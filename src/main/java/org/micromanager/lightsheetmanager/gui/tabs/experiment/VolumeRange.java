@@ -9,12 +9,20 @@ public final class VolumeRange {
     private VolumeRange() {
     }
 
-    /** The slices that cover {@code rangeUm} at {@code stepUm}, to the nearest slice. */
+    // steps within this fraction of a whole number count as whole, so 100 µm at 0.1 µm, which
+    // divides to 1000.0000000000001 in doubles, is 1001 slices and not 1002
+    private static final double WHOLE = 1e-6;
+
+    /**
+     * The whole slices that cover at least {@code rangeUm} at {@code stepUm}: a range between
+     * two steps gets one slice more, never one less.
+     */
     public static int slicesFor(final double rangeUm, final double stepUm) {
         if (!(stepUm > 0.0)) {
             throw new IllegalArgumentException("a step of " + stepUm + " µm has no slices");
         }
-        return (int) Math.max(1, Math.round(Math.max(0.0, rangeUm) / stepUm) + 1);
+        final double steps = Math.max(0.0, rangeUm) / stepUm;
+        return (int) Math.ceil(steps - WHOLE) + 1;
     }
 
     /** The range {@code slices} slices cover at {@code stepUm}. */

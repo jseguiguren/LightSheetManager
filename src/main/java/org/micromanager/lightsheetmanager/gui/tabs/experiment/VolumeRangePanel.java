@@ -11,7 +11,7 @@ import org.micromanager.lightsheetmanager.gui.components.Spinner;
 
 /**
  * The volume as a range and a step in µm; LSM's slices per volume follow from them
- * ({@link VolumeRange}). The Acquisition tab shows the same volume as slices and step.
+ * ({@link VolumeRange}): whole slices covering at least the range. The Acquisition tab shows the same volume as slices and step.
  */
 public class VolumeRangePanel extends Panel implements SettingsListener {
 
