@@ -16,6 +16,6 @@ Building requires JDK 11: the pom's enforcer plugin fails the build on any other
 $env:JAVA_HOME = 'C:\Program Files\Eclipse Adoptium\jdk-11.0.31.11-hotspot'
 ```
 
-To build, run `mvn clean package` from the `LightSheetManager` directory. The resultant jar will be available in the `LightSheetManager/target` folder, and then must be manually copied into the `Micro-manager/mmplugins`. The build runs no automated tests. The first build on a machine must be run online so Maven can download the build plugins; after that `mvn -o clean package` works offline.
+To build, run `mvn clean package` from the `LightSheetManager` directory. The resultant jar will be available in the `LightSheetManager/target` folder, and then must be manually copied into the `Micro-manager/mmplugins`. The build also runs the unit tests under `src/test`, which need no Micro-Manager installation beyond `MMJ_.jar`. The first build on a machine must be run online so Maven can download the build plugins; after that `mvn -o clean package` works offline.
 
 Doing this requires having Maven installed. Most IDEs have a Maven plugin that can accomplish the same thing as the manual way above.

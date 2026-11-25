@@ -2,6 +2,8 @@ package org.micromanager.lightsheetmanager.model;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import java.util.Objects;
+import org.micromanager.lightsheetmanager.liveview.LiveViewOrientation;
 
 /**
  * Plugin settings that are not a part of the acquisition settings.
@@ -16,6 +18,9 @@ public class PluginSettings {
     private final JoystickData joystick = new JoystickData();
 
     private final XYZGrid xyzGrid = new XYZGrid();
+
+    // volatile: replaced from the EDT (Camera tab), read when the Live pipeline is updated
+    private volatile LiveViewOrientation liveViewOrientation = LiveViewOrientation.none();
 
     public JoystickData joystickPanel() {
         return joystick;
@@ -39,6 +44,15 @@ public class PluginSettings {
 
     public boolean isAcquireFailQuietly() {
         return acquireFailQuietly;
+    }
+
+    public LiveViewOrientation liveViewOrientation() {
+        // null only from settings JSON that holds an explicit null
+        return liveViewOrientation != null ? liveViewOrientation : LiveViewOrientation.none();
+    }
+
+    public void liveViewOrientation(final LiveViewOrientation orientation) {
+        liveViewOrientation = Objects.requireNonNull(orientation);
     }
 
     public String toJson() {

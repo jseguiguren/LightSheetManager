@@ -22,6 +22,7 @@ import org.micromanager.lightsheetmanager.api.internal.DispimAcquisitionSettings
 import org.micromanager.lightsheetmanager.api.internal.DefaultTimingSettings;
 import org.micromanager.lightsheetmanager.model.utils.FileUtils;
 import org.micromanager.lightsheetmanager.LightSheetManager;
+import org.micromanager.lightsheetmanager.liveview.LiveViewPipeline;
 import org.micromanager.lightsheetmanager.model.PLogicDispim;
 import org.micromanager.lightsheetmanager.model.devices.NIDAQ;
 import org.micromanager.lightsheetmanager.model.devices.cameras.CameraBase;
@@ -239,6 +240,8 @@ public class AcquisitionEngineDispim extends AcquisitionEngine {
         SequenceSettings.Builder sequenceSettingsBuilder = new SequenceSettings.Builder();
         sequenceSettingsBuilder.shouldDisplayImages(true);
 
+        // the Live view orientation step must not flip the images stored by this acquisition
+        LiveViewPipeline.keepOutOfAcquisitions(studio_);
         MMAcquisition acq = new MMAcquisition(studio_, dsmd,
                 this, sequenceSettingsBuilder.build());
 

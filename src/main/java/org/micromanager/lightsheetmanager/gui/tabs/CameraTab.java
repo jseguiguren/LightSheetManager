@@ -2,10 +2,13 @@ package org.micromanager.lightsheetmanager.gui.tabs;
 
 import org.micromanager.lightsheetmanager.LightSheetManager;
 import org.micromanager.lightsheetmanager.gui.components.Button;
+import org.micromanager.lightsheetmanager.gui.components.CheckBox;
 import org.micromanager.lightsheetmanager.gui.components.ComboBox;
 import org.micromanager.lightsheetmanager.gui.components.ListeningPanel;
 import org.micromanager.lightsheetmanager.gui.components.Panel;
 import org.micromanager.lightsheetmanager.gui.components.Spinner;
+import org.micromanager.lightsheetmanager.liveview.LiveViewOrientation;
+import org.micromanager.lightsheetmanager.liveview.LiveViewPipeline;
 import org.micromanager.lightsheetmanager.model.devices.cameras.CameraBase;
 
 import javax.swing.JLabel;
@@ -46,6 +49,8 @@ public class CameraTab extends Panel implements ListeningPanel {
         createUserInterface();
         createEventHandlers();
         refreshBinning();
+        // a step restored by Micro-Manager from the profile may hold older flips than ours
+        LiveViewPipeline.show(model_.studio(), model_.pluginSettings().liveViewOrientation());
     }
 
     private void createUserInterface() {
@@ -120,6 +125,7 @@ public class CameraTab extends Panel implements ListeningPanel {
         add(lblTitle, "wrap");
         add(pnlBinning, "wrap");
         add(pnlROI, "wrap");
+        add(createLiveViewPanel(), "wrap");
     }
 
     private void createEventHandlers() {
@@ -387,6 +393,44 @@ public class CameraTab extends Panel implements ListeningPanel {
         final int x = (rect.width - width) / 2;
         final int y = (rect.height - height) / 2;
         return new Rectangle(x, y, width, height);
+    }
+
+    /**
+     * One row per imaging camera: mirror its Live images left-right and top-bottom. Acquired
+     * images are never flipped.
+     */
+    private Panel createLiveViewPanel() {
+        final Panel panel = new Panel("Live View Orientation");
+        for (final String role : model_.devices().imagingCameraNames()) {
+            // keyed by device name, which is what images carry in their metadata
+            final String camera = model_.devices().device2(role, CameraBase.class)
+                    .map(CameraBase::getDeviceName).orElse(null);
+            if (camera == null) {
+                continue; // no camera assigned to this role
+            }
+            final LiveViewOrientation saved = model_.pluginSettings().liveViewOrientation();
+            final CheckBox cbxHorizontal = new CheckBox("Flip horizontal",
+                    saved.flipsHorizontally(camera));
+            final CheckBox cbxVertical = new CheckBox("Flip vertical",
+                    saved.flipsVertically(camera));
+            cbxHorizontal.setToolTipText("Mirror " + camera + "'s Live images left-right. "
+                    + "Acquired images are stored unflipped.");
+            cbxVertical.setToolTipText("Mirror " + camera + "'s Live images top-bottom. "
+                    + "Acquired images are stored unflipped.");
+            final Runnable update = () -> {
+                final LiveViewOrientation orientation = model_.pluginSettings()
+                        .liveViewOrientation()
+                        .with(camera, cbxHorizontal.isSelected(), cbxVertical.isSelected());
+                model_.pluginSettings().liveViewOrientation(orientation);
+                LiveViewPipeline.show(model_.studio(), orientation);
+            };
+            cbxHorizontal.registerListener(update);
+            cbxVertical.registerListener(update);
+            panel.add(new JLabel(camera + ":"), "");
+            panel.add(cbxHorizontal, "");
+            panel.add(cbxVertical, "wrap");
+        }
+        return panel;
     }
 
     @Override
