@@ -144,6 +144,30 @@ public class LiveViewPipelineTest {
     }
 
     @Test
+    public void aTestAcquisitionGetsTheFlipAndARealOneDoesNot() {
+        addRow(new LiveViewOrientationConfigurator(
+                LiveViewOrientation.none().with("CamB", true, false).toPropertyMap()), false, true);
+        assertTrue(LiveViewPipeline.prepareForAcquisition(studio(), true));
+        assertTrue("test images are flipped like Live", enabled.get(0));
+        assertFalse(LiveViewPipeline.prepareForAcquisition(studio(), false));
+        assertFalse("stored images never are", enabled.get(0));
+    }
+
+    @Test
+    public void aTestAcquisitionWithNothingToFlipLeavesTheStepOff() {
+        addRow(new LiveViewOrientationConfigurator(PropertyMaps.emptyPropertyMap()), false, true);
+        assertFalse(LiveViewPipeline.prepareForAcquisition(studio(), true));
+        assertFalse(enabled.get(0));
+    }
+
+    @Test
+    public void aTestAcquisitionWithoutTheStepFlipsNothing() {
+        addRow(otherStep(), true, true);
+        assertFalse(LiveViewPipeline.prepareForAcquisition(studio(), true));
+        assertTrue("other steps keep their setting", enabled.get(0));
+    }
+
+    @Test
     public void imagesOfOtherCamerasAndUnnamedImagesPassThroughUncopied() {
         final LiveViewOrientationProcessor processor = new LiveViewOrientationProcessor(
                 null, LiveViewOrientation.none().with("CamB", true, true)); // ij unused here

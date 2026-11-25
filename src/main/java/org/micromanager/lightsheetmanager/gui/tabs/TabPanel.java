@@ -1,5 +1,6 @@
 package org.micromanager.lightsheetmanager.gui.tabs;
 
+import org.micromanager.lightsheetmanager.gui.tabs.experiment.ExperimentSetupTab;
 import org.micromanager.lightsheetmanager.api.data.CameraMode;
 import org.micromanager.lightsheetmanager.api.data.GeometryType;
 import org.micromanager.lightsheetmanager.LightSheetManagerFrame;
@@ -60,8 +61,15 @@ public class TabPanel extends Panel {
         settingsTab_ = new SettingsTab(model_);
 
         // add tabs to the pane
-        String tabName = "Navigation";
+        String tabName = "Experiment Setup";
         int index = tabbedPane_.getTabCount();
+        tabbedPane_.addTab(tabName, new ExperimentSetupTab(model_, frame_));
+        tabbedPane_.setTabComponentAt(index, createTabTitle(tabName));
+        tabbedPane_.setToolTipTextAt(index, "Find a sample and choose its imaging settings: "
+                + "cameras, exposure, volume, channels, time points, positions and devices.");
+
+        tabName = "Navigation";
+        index = tabbedPane_.getTabCount();
         tabbedPane_.addTab(tabName, navigationTab_);
         tabbedPane_.setTabComponentAt(index, createTabTitle(tabName));
         // tab tooltips go on the tab and not on its title label, which would take the clicks
@@ -122,7 +130,7 @@ public class TabPanel extends Panel {
         if (tabIndex != -1) {
             tabbedPane_.setSelectedIndex(tabIndex);
         } else {
-            tabbedPane_.setSelectedIndex(0); // Navigation Tab
+            tabbedPane_.setSelectedIndex(0); // Experiment Setup tab
         }
 
         // add ui elements to the panel

@@ -24,6 +24,7 @@ import org.micromanager.lightsheetmanager.api.data.AcquisitionMode;
 import org.micromanager.lightsheetmanager.api.internal.BaseAcquisitionSettings;
 import org.micromanager.lightsheetmanager.api.internal.ScapeAcquisitionSettings;
 import org.micromanager.lightsheetmanager.gui.tabs.acquisition.DurationPanel;
+import org.micromanager.lightsheetmanager.liveview.LiveViewPipeline;
 import org.micromanager.lightsheetmanager.model.autofocus.AutofocusAdapter;
 import org.micromanager.lightsheetmanager.model.channels.ChannelSpec;
 import org.micromanager.lightsheetmanager.model.devices.cameras.CameraBase;
@@ -34,6 +35,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -89,7 +91,8 @@ public abstract class AcquisitionEngine implements AcquisitionManager, MMAcquist
     // null until a stage scan captures the stage, cleared by finish()
     protected StageScanState stageScanState_;
 
-    protected DurationPanel pnlDuration_;
+    // every Durations panel shown, on the Acquisition and Experiment Setup tabs
+    protected final List<DurationPanel> durationPanels_ = new CopyOnWriteArrayList<>();
 
     protected final LightSheetManager model_;
 
@@ -353,8 +356,13 @@ public abstract class AcquisitionEngine implements AcquisitionManager, MMAcquist
 
     public abstract void updateDurationLabels();
 
-    public void setDurationPanel(final DurationPanel panel) {
-        pnlDuration_ = Objects.requireNonNull(panel);
+    public void addDurationPanel(final DurationPanel panel) {
+        durationPanels_.add(Objects.requireNonNull(panel));
+    }
+
+    /** Whether the run in progress is a test acquisition, which is never saved. */
+    protected boolean isTestAcquisition() {
+        return testAcquisition_;
     }
 
     /**
@@ -495,6 +503,10 @@ public abstract class AcquisitionEngine implements AcquisitionManager, MMAcquist
                     acquisitionRequested_ = false;
                     // cleared here so the next run rebuilds from the user's own settings
                     testAcquisition_ = false;
+                    // a test acquisition turned the Live view orientation on for its window
+                    // queued, not waited for: cleanup must not stall on a busy EDT. The next
+                    // run turns it off again before it copies the pipeline in any case.
+                    LiveViewPipeline.keepOutOfAcquisitionsLater(studio_);
                     // free the datastore so a large store isn't kept in memory (matches MM's
                     // AcqEngJAdapter.onAcquisitionEnded); also what the save guard checks to skip aborted/empty runs
                     datastore_ = null;
