@@ -123,4 +123,29 @@ public class ExperimentSetupLogicTest {
                 "XY", 0.0, 0.0, "Z", 0.0, null, 0.0));
         StagePositions.labelFor("embryo 1", list);
     }
+
+    @Test
+    public void rangeAndStepGiveTheSlices() {
+        assertEquals(101, VolumeRange.slicesFor(100.0, 1.0)); // both ends imaged
+        assertEquals(201, VolumeRange.slicesFor(100.0, 0.5));
+        assertEquals(1, VolumeRange.slicesFor(0.0, 1.0));
+    }
+
+    @Test
+    public void aRangeBetweenStepsRoundsToTheNearestSlice() {
+        assertEquals(11, VolumeRange.slicesFor(10.4, 1.0));
+        assertEquals(12, VolumeRange.slicesFor(10.6, 1.0));
+    }
+
+    @Test
+    public void theRangeShownIsTheOneTheSlicesCover() {
+        assertEquals(100.0, VolumeRange.rangeFor(101, 1.0), EPS);
+        assertEquals(0.0, VolumeRange.rangeFor(1, 1.0), EPS);
+        assertEquals(10.0, VolumeRange.rangeFor(VolumeRange.slicesFor(10.4, 1.0), 1.0), EPS);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void aStepOfZeroHasNoSlices() {
+        VolumeRange.slicesFor(10.0, 0.0);
+    }
 }

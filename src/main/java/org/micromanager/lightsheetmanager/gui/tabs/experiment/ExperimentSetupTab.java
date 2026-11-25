@@ -24,7 +24,6 @@ import org.micromanager.lightsheetmanager.gui.components.Spinner;
 import org.micromanager.lightsheetmanager.gui.tabs.acquisition.CameraPanel;
 import org.micromanager.lightsheetmanager.gui.tabs.acquisition.DurationPanel;
 import org.micromanager.lightsheetmanager.gui.tabs.acquisition.TimePointsPanel;
-import org.micromanager.lightsheetmanager.gui.tabs.acquisition.VolumePanel;
 import org.micromanager.lightsheetmanager.gui.tabs.channels.ChannelTablePanel;
 import org.micromanager.lightsheetmanager.model.devices.cameras.CameraBase;
 
@@ -109,7 +108,7 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
 
         pnlLeft_.add(new CameraPanel(model_), "growx, wrap");
         pnlLeft_.add(pnlExposure, "growx, wrap");
-        pnlLeft_.add(new VolumePanel(model_), "growx, wrap");
+        pnlLeft_.add(new VolumeRangePanel(model_), "growx, wrap");
         pnlLeft_.add(new DurationPanel(model_), "growx");
 
         cbxUseChannels_ = new CheckBox("Channels", settings.channels().enabled());
