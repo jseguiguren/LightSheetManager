@@ -190,6 +190,12 @@ public class ChannelTablePanel extends Panel implements SettingsListener {
             var settingsScape = (ScapeAcquisitionSettings) settings;
             cmbChannelGroup_.setSelectedItem(settingsScape.channels().group());
             cmbChannelMode_.setSelected(settingsScape.channels().mode());
+            // the rows too: another table on another tab edits the same channels, and this
+            // table pushes all of its rows at its next edit
+            final String group = settingsScape.channels().group();
+            table_.getData().setChannels(group, settingsScape.channels().data());
+            table_.updatePresetComboBoxes(group);
+            table_.refreshData();
             setItemsEnabled(settingsScape.channels().enabled());
         }
     }

@@ -183,12 +183,23 @@ public class CameraPanel extends Panel implements SettingsListener {
         if (settings instanceof ScapeAcquisitionSettings) {
             var settingsScape = (ScapeAcquisitionSettings) settings;
             cmbCameraMode_.setSelectedItem(settingsScape.cameraMode());
-            // set the primary camera
-//            final CameraData[] cameraOrder = settingsScape.imagingCameraOrder();
-//            if (cameraOrder.length > 0) {
-//                final String primaryCamera = cameraOrder[0].name();
-//                radPrimaryCamera_.setSelected(primaryCamera, true);
-//            }
+            // the primary camera and the Active boxes, without firing their listeners: another
+            // panel on another tab edits the same camera order, and a stale copy here would
+            // overwrite it at this panel's next edit
+            final CameraData[] cameraOrder = settingsScape.imagingCameraOrder();
+            if (cameraOrder.length > 0) {
+                radPrimaryCamera_.setSelected(cameraOrder[0].name(), true);
+            }
+            final String[] cameraNames = model_.devices().imagingCameraNames();
+            for (int i = 0; i < cbxCameras_.size() && i < cameraNames.length; i++) {
+                cbxCameras_.get(i).setLocked(false);
+                cbxCameras_.get(i).setSelected(
+                        CameraData.isCameraActive(cameraOrder, cameraNames[i]), false);
+            }
+            selectedIndex_ = radPrimaryCamera_.getSelectedIndex();
+            if (selectedIndex_ != -1) {
+                cbxCameras_.get(selectedIndex_).setLocked(true);
+            }
         }
     }
 }
