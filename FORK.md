@@ -32,3 +32,12 @@ Upstream: `candidate` (not proposed yet), a pull request link with its state, or
   update both lines together. Upstream builds against its own copy of the jar.
 - `.github/workflows/release_jar.yml` comes from upstream unchanged and runs on a push to `main`
   that touches `pom.xml`; it would tag and release from this fork too.
+
+## Effects to know about
+
+- Live view orientation adds a step, "Light Sheet Manager Live View Orientation", to
+  Micro-Manager's On-The-Fly Image Processing pipeline the first time a flip box is ticked on the
+  Camera tab, and opens that window. Micro-Manager saves the pipeline in the user profile. If this
+  plugin jar is later replaced by one without the step (upstream LSM before it takes the change),
+  Micro-Manager cannot rebuild the step at startup, logs "Failed to reload pipeline" and drops
+  the steps saved after it. Before going back to such a jar, delete the step in that window.
