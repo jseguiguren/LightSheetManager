@@ -17,8 +17,8 @@ jobs:
       # MMJ_.jar is not on Maven Central, so it is taken from that nightly's Windows installer and
       # checked against the hash of the copy the plugin was last built against. A new nightly
       # changes both lines together.
-      MM_NIGHTLY: MMSetup_64bit_2.0.3_20260806.exe
-      MMJ_SHA256: 44cf38aeb32e7de78a7455e6295b0ee7c360df6aaa381ca5aab9183b1791848e
+      MM_NIGHTLY: MMSetup_64bit_2.0.3_20261103.exe
+      MMJ_SHA256: 44bdec861768c8871a4404db2ba5a0932629544907d795101ac71efcfa674d9b
 
     steps:
 
