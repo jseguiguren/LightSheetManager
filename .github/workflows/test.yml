@@ -3,17 +3,25 @@ name: Run pre-merge tests
 on:
   pull_request:
     branches: [ main ]
-  
+
 jobs:
-                 
+
   maven-deploy:
-    # build with maven to make sure things compile correctly
-      
-    name: Try to compile with maven
-    runs-on: ubuntu-latest 
+    # build with maven to make sure things compile correctly, and run the unit tests
+
+    name: Compile and test with maven
+    runs-on: ubuntu-latest
+
+    env:
+      # Fork only: the Micro-Manager nightly the plugin is built against, the one the rig runs.
+      # MMJ_.jar is not on Maven Central, so it is taken from that nightly's Windows installer and
+      # checked against the hash of the copy the plugin was last built against. A new nightly
+      # changes both lines together.
+      MM_NIGHTLY: MMSetup_64bit_2.0.3_20260806.exe
+      MMJ_SHA256: 44cf38aeb32e7de78a7455e6295b0ee7c360df6aaa381ca5aab9183b1791848e
 
     steps:
-    
+
       - uses: actions/checkout@v7
 
       - name: Set up JDK 11
@@ -22,6 +30,15 @@ jobs:
           java-version: 11
           distribution: 'zulu'
 
-          
-      - name: Publish to Apache Maven Central
-        run: mvn package
+      - name: Fetch MMJ_.jar from the Micro-Manager nightly
+        run: |
+          sudo apt-get install -y -q innoextract
+          curl -sSfL -o "$RUNNER_TEMP/mmsetup.exe" \
+            "https://download.micro-manager.org/nightly/2.0/Windows/$MM_NIGHTLY"
+          innoextract -s -I app/plugins/Micro-Manager/MMJ_.jar -d "$RUNNER_TEMP/mm" "$RUNNER_TEMP/mmsetup.exe"
+          mkdir -p lib
+          cp "$RUNNER_TEMP/mm/app/plugins/Micro-Manager/MMJ_.jar" lib/MMJ_.jar
+          echo "$MMJ_SHA256  lib/MMJ_.jar" | sha256sum -c -
+
+      - name: Compile and test
+        run: mvn -B package

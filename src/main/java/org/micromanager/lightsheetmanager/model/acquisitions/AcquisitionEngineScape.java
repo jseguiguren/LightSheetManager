@@ -32,6 +32,7 @@ import org.micromanager.lightsheetmanager.api.data.SaveMode;
 import org.micromanager.lightsheetmanager.api.internal.DefaultTimingSettings;
 import org.micromanager.lightsheetmanager.api.internal.ScapeAcquisitionSettings;
 import org.micromanager.lightsheetmanager.LightSheetManager;
+import org.micromanager.lightsheetmanager.liveview.LiveViewPipeline;
 import org.micromanager.lightsheetmanager.model.PLogicScape;
 import org.micromanager.lightsheetmanager.model.devices.DeviceAdapter;
 import org.micromanager.lightsheetmanager.model.devices.NIDAQ;
@@ -562,6 +563,8 @@ public class AcquisitionEngineScape extends AcquisitionEngine {
                     .prefix(prefix);
         }
 
+        // the Live view orientation step must not flip the images stored by this acquisition
+        LiveViewPipeline.keepOutOfAcquisitions(studio_);
         MMAcquisition acq = new MMAcquisition(studio_, dsmd,
                 this, sequenceSettingsBuilder.build());
 
