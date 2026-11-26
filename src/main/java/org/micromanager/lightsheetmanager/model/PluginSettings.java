@@ -26,7 +26,8 @@ public class PluginSettings {
     // the O3 autofocus reference and search (scapecontrol ADR-0037)
     private FocusSetup focusSetup = new FocusSetup();
 
-    // Experiment Setup's Volume: the range is covered at every depth (scan = range + 2g)
+    // Experiment Setup's Volume: the value typed is the effective range (scan = it + 2g), not the
+    // actual range (the scan itself)
     private volatile boolean volumeFullCoverage = false;
 
     public JoystickData joystickPanel() {

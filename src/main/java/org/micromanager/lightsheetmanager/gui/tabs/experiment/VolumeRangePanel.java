@@ -8,7 +8,7 @@ import javax.swing.Timer;
 import org.micromanager.lightsheetmanager.LightSheetManager;
 import org.micromanager.lightsheetmanager.api.AcquisitionSettings;
 import org.micromanager.lightsheetmanager.api.internal.ScapeAcquisitionSettings;
-import org.micromanager.lightsheetmanager.gui.components.CheckBox;
+import org.micromanager.lightsheetmanager.gui.components.ComboBox;
 import org.micromanager.lightsheetmanager.gui.components.Panel;
 import org.micromanager.lightsheetmanager.gui.components.SettingsListener;
 import org.micromanager.lightsheetmanager.gui.components.Spinner;
@@ -16,12 +16,16 @@ import org.micromanager.lightsheetmanager.model.devices.cameras.CameraBase;
 
 /**
  * The volume as a range along the scan and a step in µm; LSM's slices per volume follow from them
- * ({@link VolumeRange}), with the sheet angle from LSM's Settings tab (first view angle). With
- * Full coverage, the scan adds the tilted sheet's reach at both ends, from the cropped image height
- * and the binned pixel size, so the range is imaged at every depth. The Acquisition tab shows the
- * same volume as slices and step.
+ * ({@link VolumeRange}), with the sheet angle from LSM's Settings tab (first view angle). The
+ * value typed is either the effective range, the region covered by every image row, so the scan
+ * adds the tilted sheet's reach g at both ends (from the cropped image height and the binned pixel
+ * size), or the actual range, the scan itself, g included. The Acquisition tab shows the same
+ * volume as slices and step.
  */
 public class VolumeRangePanel extends Panel implements SettingsListener {
+
+    private static final String EFFECTIVE = "Effective range";
+    private static final String ACTUAL = "Actual range";
 
     // how often the crop, binning, pixel size and angle are checked for a change
     private static final int GEOMETRY_POLL_MS = 1000;
@@ -29,7 +33,7 @@ public class VolumeRangePanel extends Panel implements SettingsListener {
     private final LightSheetManager model_;
     private final Spinner spnRange_;
     private final Spinner spnStep_;
-    private final CheckBox cbxFull_;
+    private final ComboBox<String> cmbMeaning_;
     private final JLabel lblSlices_;
     private final Timer geometryPoll_;
     private Geometry applied_;
@@ -40,14 +44,15 @@ public class VolumeRangePanel extends Panel implements SettingsListener {
         final double alphaDeg;
         final int heightPx;
         final double pixelUm;
-        final boolean full;
+        // the value typed is the effective range: the scan adds 2g
+        final boolean effective;
 
         Geometry(final double alphaDeg, final int heightPx, final double pixelUm,
-                 final boolean full) {
+                 final boolean effective) {
             this.alphaDeg = alphaDeg;
             this.heightPx = heightPx;
             this.pixelUm = pixelUm;
-            this.full = full;
+            this.effective = effective;
         }
 
         @Override
@@ -57,21 +62,23 @@ public class VolumeRangePanel extends Panel implements SettingsListener {
             }
             final Geometry g = (Geometry) o;
             return alphaDeg == g.alphaDeg && heightPx == g.heightPx && pixelUm == g.pixelUm
-                    && full == g.full;
+                    && effective == g.effective;
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(alphaDeg, heightPx, pixelUm, full);
+            return Objects.hash(alphaDeg, heightPx, pixelUm, effective);
         }
 
-        /** g, or 0 without Full coverage; NaN when it cannot be computed. */
-        double extraPerEndUm() {
-            if (!full) {
-                return 0.0;
-            }
+        /** g; NaN when there is no cropped height or pixel size to compute it from. */
+        double gUm() {
             return heightPx > 0 && pixelUm > 0
                     ? VolumeRange.extraPerEndUm(heightPx, pixelUm, alphaDeg) : Double.NaN;
+        }
+
+        /** What the scan adds to the value typed: 2g for the effective range, else 0. */
+        double addedUm() {
+            return effective ? 2 * gUm() : 0.0;
         }
     }
 
@@ -82,22 +89,21 @@ public class VolumeRangePanel extends Panel implements SettingsListener {
         spnStep_ = Spinner.createDoubleSpinner(
                 settings.volume().sliceStepSize(), 0.01, 100.0, 0.1, 6);
         spnRange_ = Spinner.createDoubleSpinner(0.0, 0.0, 100000.0, 1.0, 6);
-        cbxFull_ = new CheckBox("Full coverage at every depth",
-                model_.pluginSettings().isVolumeFullCoverage());
+        cmbMeaning_ = new ComboBox<>(new String[] {EFFECTIVE, ACTUAL},
+                model_.pluginSettings().isVolumeFullCoverage() ? EFFECTIVE : ACTUAL, 125, 22);
         lblSlices_ = new JLabel();
-        spnRange_.setToolTipText("Length of the volume along the scan, centred on the Imaging "
-                + "Center.");
+        spnRange_.setToolTipText("Length along the scan, centred on the Imaging Center.");
         spnStep_.setToolTipText("Distance between sheets, perpendicular to them (LSM's slice "
                 + "step); along the scan it is step / sin(90° - angle).");
-        cbxFull_.setToolTipText("Scan the range plus the tilted sheet's reach at both ends "
-                + "(half the cropped image height x pixel size x sin(angle)), so the range is "
-                + "imaged at every depth. Off: the range is the scan itself.");
+        cmbMeaning_.setToolTipText("Effective range: the region every image row covers; the "
+                + "scan adds g = half the cropped height x pixel size x sin(angle) at both ends. "
+                + "Actual range: the scan itself, 2g included.");
 
-        add(new JLabel("Range [µm]:"), "");
-        add(spnRange_, "wrap");
+        add(cmbMeaning_, "");
+        add(spnRange_, "split 2");
+        add(new JLabel("µm"), "wrap");
         add(new JLabel("Step [µm]:"), "");
         add(spnStep_, "wrap");
-        add(cbxFull_, "span 2, wrap");
         add(lblSlices_, "span 2, w 250!");
 
         applied_ = geometry();
@@ -106,8 +112,8 @@ public class VolumeRangePanel extends Panel implements SettingsListener {
 
         spnRange_.registerListener(this::apply);
         spnStep_.registerListener(this::apply);
-        cbxFull_.registerListener(() -> {
-            model_.pluginSettings().setVolumeFullCoverage(cbxFull_.isSelected());
+        cmbMeaning_.registerListener(() -> {
+            model_.pluginSettings().setVolumeFullCoverage(EFFECTIVE.equals(cmbMeaning_.getSelected()));
             apply();
         });
         model_.userSettings().addChangeListener(this);
@@ -154,7 +160,7 @@ public class VolumeRangePanel extends Panel implements SettingsListener {
         } catch (Exception e) {
             pixel = 0.0;
         }
-        return new Geometry(alpha, height, pixel, cbxFull_.isSelected());
+        return new Geometry(alpha, height, pixel, EFFECTIVE.equals(cmbMeaning_.getSelected()));
     }
 
     private void apply() {
@@ -174,19 +180,18 @@ public class VolumeRangePanel extends Panel implements SettingsListener {
             showProblem(e.getMessage());
             return;
         }
-        final double g = geometry.extraPerEndUm();
-        if (Double.isNaN(g)) {
-            showProblem("Full coverage needs a cropped height and a pixel size for this "
+        final double added = geometry.addedUm();
+        if (Double.isNaN(added)) {
+            showProblem("The effective range needs a cropped height and a pixel size for this "
                     + "camera and binning: slices not changed.");
             return;
         }
-        final double range = spnRange_.getDouble();
-        final int slices = VolumeRange.slicesFor(range + 2 * g, lateral);
+        final int slices = VolumeRange.slicesFor(spnRange_.getDouble() + added, lateral);
         model_.acquisitions().settingsBuilder().volumeBuilder()
                 .sliceStepSize(step)
                 .slicesPerView(slices);
         model_.acquisitions().updateDurationLabels();
-        showSlices(slices, lateral, range, g, geometry);
+        showSlices(slices, lateral, geometry);
     }
 
     /** Sets the range field to what {@code slices} cover, unless the typed range gives them. */
@@ -198,26 +203,29 @@ public class VolumeRangePanel extends Panel implements SettingsListener {
             showProblem(e.getMessage());
             return;
         }
-        final double g = geometry.extraPerEndUm();
-        final double extra = Double.isNaN(g) ? 0.0 : 2 * g;
+        final double added = Double.isNaN(geometry.addedUm()) ? 0.0 : geometry.addedUm();
         refreshing_ = true;
         spnStep_.setDouble(step);
-        if (VolumeRange.slicesFor(spnRange_.getDouble() + extra, lateral) != slices) {
+        if (VolumeRange.slicesFor(spnRange_.getDouble() + added, lateral) != slices) {
             spnRange_.setDouble(Math.round(Math.max(0.0,
-                    VolumeRange.rangeFor(slices, lateral) - extra) * 100.0) / 100.0);
+                    VolumeRange.rangeFor(slices, lateral) - added) * 100.0) / 100.0);
         }
         refreshing_ = false;
-        showSlices(slices, lateral, spnRange_.getDouble(), Double.isNaN(g) ? 0.0 : g, geometry);
+        showSlices(slices, lateral, geometry);
     }
 
-    private void showSlices(final int slices, final double lateral, final double range,
-                            final double g, final Geometry geometry) {
-        final double scan = VolumeRange.rangeFor(slices, lateral);
-        final String how = geometry.full
-                ? String.format(" (%.1f + 2 x %.1f)", range, g) : "";
-        lblSlices_.setText(String.format("<html>%d slices, scan %.1f µm%s<br>"
-                        + "angle %.1f° (Settings tab), %.3f µm along the scan</html>",
-                slices, scan, how, geometry.alphaDeg, lateral));
+    /** Both ranges the slices give, whichever one is typed: the actual one is the scan. */
+    private void showSlices(final int slices, final double lateral, final Geometry geometry) {
+        final double actual = VolumeRange.rangeFor(slices, lateral);
+        final double g = geometry.gUm();
+        final String effective = Double.isNaN(g) ? "effective: no crop or pixel size"
+                : actual - 2 * g > 0 ? String.format("effective %.1f µm", actual - 2 * g)
+                : "no effective range";
+        lblSlices_.setText(String.format("<html>%d slices: actual %.1f µm, %s<br>"
+                        + "%sangle %.1f° (Settings tab), %.3f µm along the scan</html>",
+                slices, actual, effective,
+                Double.isNaN(g) ? "" : String.format("g %.1f µm, ", g),
+                geometry.alphaDeg, lateral));
     }
 
     private void showProblem(final String text) {
