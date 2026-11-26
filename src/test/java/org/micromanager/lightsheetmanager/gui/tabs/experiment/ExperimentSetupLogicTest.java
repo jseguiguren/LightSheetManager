@@ -43,41 +43,42 @@ public class ExperimentSetupLogicTest {
         // "488-Volts": preset NewPreset = { '488' Voltage }
         assertEquals(ConfigGroupKind.PROPERTY,
                 ConfigGroupKind.of(Collections.singletonList("NewPreset"), 1,
-                        Collections.singletonList("Voltage")));
+                        settings("488", "Voltage")));
     }
 
     @Test
     public void namedPresetsAreADropdown() {
         assertEquals(ConfigGroupKind.PRESETS,
                 ConfigGroupKind.of(Arrays.asList("405 only", "488+561"), 3,
-                        Arrays.asList("OutputChannel", "Label", "Label")));
+                        settings("PLogic:E:36", "OutputChannel", "FilterWheel:0:38", "Label",
+                                "FilterWheel:1:38", "Label")));
         // one preset of several settings is still a preset to pick
         assertEquals(ConfigGroupKind.PRESETS,
                 ConfigGroupKind.of(Collections.singletonList("Startup"), 12,
-                        Collections.singletonList("Label")));
+                        settings("FilterWheel:0:38", "Label")));
     }
 
     @Test
     public void rawSerialGroupsAreLeftToMicroManagersWindow() {
         assertEquals(ConfigGroupKind.HIDDEN,
                 ConfigGroupKind.of(Collections.singletonList("NewPreset"), 1,
-                        Collections.singletonList("SerialCommand")));
+                        settings("TigerCommHub", "SerialCommand")));
         assertEquals(ConfigGroupKind.HIDDEN,
                 ConfigGroupKind.of(Collections.singletonList("NewPreset"), 1,
-                        Collections.singletonList("SerialResponse")));
+                        settings("TigerCommHub", "SerialResponse")));
     }
 
     @Test
     public void presetsThatSendASerialCommandAreHiddenToo() {
         assertEquals(ConfigGroupKind.HIDDEN,
                 ConfigGroupKind.of(Arrays.asList("home", "reset"), 1,
-                        Arrays.asList("SerialCommand", "SerialCommand")));
+                        settings("TigerCommHub", "SerialCommand", "TigerCommHub", "SerialCommand")));
     }
 
     @Test
     public void aGroupWithoutPresetsIsHidden() {
         assertEquals(ConfigGroupKind.HIDDEN,
-                ConfigGroupKind.of(Collections.emptyList(), 0, Collections.emptyList()));
+                ConfigGroupKind.of(Collections.emptyList(), 0, settings()));
     }
 
     @Test
@@ -158,4 +159,31 @@ public class ExperimentSetupLogicTest {
         VolumeRange.slicesFor(10.0, 0.0);
     }
 
+    /** device, property, device, property, ...: a group's settings as the panel reads them. */
+    private static java.util.List<String[]> settings(final String... deviceProperty) {
+        final java.util.List<String[]> out = new java.util.ArrayList<>();
+        for (int i = 0; i < deviceProperty.length; i += 2) {
+            out.add(new String[] {deviceProperty[i], deviceProperty[i + 1]});
+        }
+        return out;
+    }
+
+    @Test
+    public void groupsThatSwitchTheCoreCameraOrFocusAreHidden() {
+        // "Camera" (Core Camera, plus the filter slider) and "Corefocus" (Core Focus): changed by
+        // mistake, they redirect Live and the acquisition
+        assertEquals(ConfigGroupKind.HIDDEN, ConfigGroupKind.of(
+                Arrays.asList("Multi", "LightSheet-Cam1"), 2,
+                settings("Core", "Camera", "FilterSlider:S:35", "Label")));
+        assertEquals(ConfigGroupKind.HIDDEN, ConfigGroupKind.of(
+                Arrays.asList("ZStage:Z:32", "PiezoStage:P:34"), 1, settings("Core", "Focus")));
+    }
+
+    @Test
+    public void aGroupThatOnlySetsTheLaserChannelIsHidden() {
+        // "Channel": PLogic OutputChannel alone; LSM sets it per channel during a run
+        assertEquals(ConfigGroupKind.HIDDEN, ConfigGroupKind.of(
+                Arrays.asList("output 3 and 5", "output 3 and 6"), 1,
+                settings("PLogic:E:36", "OutputChannel", "PLogic:E:36", "OutputChannel")));
+    }
 }

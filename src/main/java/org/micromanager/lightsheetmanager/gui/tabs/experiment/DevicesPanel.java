@@ -85,15 +85,16 @@ public class DevicesPanel extends Panel {
 
     private void addGroup(final String group) throws Exception {
         final List<String> presets = new ArrayList<>();
-        final List<String> properties = new ArrayList<>();
+        final List<String[]> properties = new ArrayList<>();
         for (final String preset : core_.getAvailableConfigs(group)) {
             presets.add(preset);
             final Configuration data = core_.getConfigData(group, preset);
             for (long i = 0; i < data.size(); i++) {
                 final PropertySetting s = data.getSetting(i);
-                properties.add(s.getPropertyName());
+                properties.add(new String[] {s.getDeviceLabel(), s.getPropertyName()});
                 if ("Core".equals(s.getDeviceLabel()) && "Camera".equals(s.getPropertyName())) {
                     cameraGroups_.add(group);
+                    presets_.put(group, presets); // for the tab's Live camera dropdown only
                 }
             }
         }

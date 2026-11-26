@@ -9,22 +9,34 @@ public enum ConfigGroupKind {
     /** One preset holding one property, which Micro-Manager's own window shows as a field
      * (a laser's Voltage, an LED's intensity). */
     PROPERTY,
-    /** Not shown: raw serial access stays in Micro-Manager's window, and an empty group has
-     * nothing to set. */
+    /** Not shown, left to Micro-Manager's window: raw serial commands, the Core camera and focus,
+     * the laser channel alone, and an empty group. */
     HIDDEN;
 
     /**
      * @param presets the group's preset names
      * @param settingsInFirstPreset how many properties the first preset sets
-     * @param propertyNames every property any preset sets, the first preset's first
+     * @param settings every {device, property} any preset sets, the first preset's first
      */
     public static ConfigGroupKind of(final List<String> presets, final int settingsInFirstPreset,
-                                     final List<String> propertyNames) {
+                                     final List<String[]> settings) {
         if (presets.isEmpty()) {
             return HIDDEN;
         }
-        // SerialCommand / SerialResponse send raw controller commands
-        if (propertyNames.stream().anyMatch(name -> name.startsWith("Serial"))) {
+        boolean onlyOutputChannel = !settings.isEmpty();
+        for (final String[] s : settings) {
+            // SerialCommand / SerialResponse send raw controller commands
+            if (s[1].startsWith("Serial")) {
+                return HIDDEN;
+            }
+            // the Core camera or focus: changed by mistake they redirect Live and the acquisition
+            if ("Core".equals(s[0]) && ("Camera".equals(s[1]) || "Focus".equals(s[1]))) {
+                return HIDDEN;
+            }
+            onlyOutputChannel &= "OutputChannel".equals(s[1]);
+        }
+        // the laser channel alone: LSM sets it per channel during a run
+        if (onlyOutputChannel) {
             return HIDDEN;
         }
         if (presets.size() == 1 && settingsInFirstPreset == 1) {

@@ -29,7 +29,7 @@ import org.micromanager.lightsheetmanager.model.devices.cameras.CameraBase;
  */
 public class PiezoFocusPanel extends Panel {
 
-    private static final String AS_NOW = "(as now)";
+    private static final String AS_NOW = "(current settings)";
 
     private final LightSheetManager model_;
     private final Consumer<Boolean> busy_;
@@ -78,14 +78,20 @@ public class PiezoFocusPanel extends Panel {
         cmbCamera_ = new ComboBox<>(cameraChoices(), orAsNow(setup.camera()), 150, 22);
         cmbChannel_ = new ComboBox<>(channelChoices(), orAsNow(setup.channelPreset()), 150, 22);
         spnExposure_ = Spinner.createDoubleSpinner(setup.exposureMs(), 0.01, 10000.0, 1.0, 5);
-        btnTest_ = new Button("Test autofocus", 140, 26);
+        btnTest_ = new Button("Test autofocus", 120, 26);
         btnTest_.setToolTipText("Search as scapecontrol will and show the correction; the piezo "
                 + "goes back, nothing is saved or changed.");
-        btnGoToFocus_ = new Button("Go to focus", 110, 26);
+        btnGoToFocus_ = new Button("Go to focus", 100, 26);
         btnGoToFocus_.setToolTipText("Move the piezo to the focus the last test found, to look at "
                 + "it in Live. The reference stays as it is, and an acquisition still starts "
                 + "from the Imaging Center.");
         btnGoToFocus_.setEnabled(false);
+        // the end of test -> go to focus -> update offset; the same as Set reference
+        final Button btnUpdateOffset = new Button("Update offset", 110, 26);
+        btnUpdateOffset.setToolTipText("Make the piezo's position the new reference, as Update "
+                + "Offset does: after Go to focus, the focus found becomes the reference. The "
+                + "sheet must be on.");
+        btnUpdateOffset.registerListener(this::setReference);
 
         add(new JLabel("Piezo:"), "");
         add(lblPiezo_, "wrap");
@@ -107,9 +113,10 @@ public class PiezoFocusPanel extends Panel {
         add(cmbChannel_, "wrap");
         add(new JLabel("Exposure [ms]:"), "");
         add(spnExposure_, "wrap");
-        add(btnTest_, "span 2, split 2");
-        add(btnGoToFocus_, "wrap");
-        add(lblResult_, "span 2, w 330!");
+        add(btnTest_, "span 2, split 3");
+        add(btnGoToFocus_, "");
+        add(btnUpdateOffset, "wrap");
+        add(lblResult_, "span 2, w 320!");
 
         btnSetReference.registerListener(this::setReference);
         final Runnable saveSearch = this::saveSearch;
@@ -181,8 +188,9 @@ public class PiezoFocusPanel extends Panel {
 
     /** Wrapped to the panel's width; a long reason no longer runs out of the window. */
     private void showResult(final String text) {
-        lblResult_.setText("<html><body style='width:300px'>"
-                + text.replace("&", "&amp;").replace("<", "&lt;") + "</body></html>");
+        lblResult_.setText("<html><body style='width:280px'>"
+                + text.replace("&", "&amp;").replace("<", "&lt;").replace("\n", "<br>")
+                + "</body></html>");
     }
 
     private void forgetFocus() {
@@ -292,7 +300,7 @@ public class PiezoFocusPanel extends Panel {
                         () -> cancel_);
                 text = r.ok
                         ? String.format("Focus at %+.3f µm from the reference (%d frames). "
-                                + "Nothing was changed.", r.deltaUm, r.samples.size())
+                                + "\nNothing was changed.", r.deltaUm, r.samples.size())
                         : "Not found: " + r.reason + " (" + r.samples.size() + " frames).";
                 if (r.ok) {
                     focus = reference + r.deltaUm;

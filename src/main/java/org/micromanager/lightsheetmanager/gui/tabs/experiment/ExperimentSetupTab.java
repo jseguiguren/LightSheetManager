@@ -25,8 +25,10 @@ import org.micromanager.lightsheetmanager.gui.components.SettingsListener;
 import org.micromanager.lightsheetmanager.gui.components.Spinner;
 import org.micromanager.lightsheetmanager.gui.tabs.acquisition.CameraPanel;
 import org.micromanager.lightsheetmanager.gui.tabs.acquisition.DurationPanel;
+import org.micromanager.lightsheetmanager.gui.tabs.acquisition.SavePanel;
 import org.micromanager.lightsheetmanager.gui.tabs.acquisition.TimePointsPanel;
 import org.micromanager.lightsheetmanager.gui.tabs.channels.ChannelTablePanel;
+import org.micromanager.lightsheetmanager.gui.utils.DialogUtils;
 import org.micromanager.lightsheetmanager.model.devices.cameras.CameraBase;
 
 /**
@@ -59,6 +61,7 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
     private Button btnLive_;
     private Button btnTestVolume_;
     private Button btnStop_;
+    private Button btnStart_;
     private boolean running_;
     // a Test autofocus drives the hardware without an LSM run: lock as for one
     private boolean busy_;
@@ -114,7 +117,7 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
         pnlLeft_.add(new CameraPanel(model_), "growx, wrap");
         pnlLeft_.add(pnlExposure, "growx, wrap");
         pnlLeft_.add(new VolumeRangePanel(model_), "growx, wrap");
-        pnlLeft_.add(new DurationPanel(model_), "growx");
+        pnlLeft_.add(new SavePanel(model_, frame_), "growx");
 
         cbxUseChannels_ = new CheckBox("Channels", settings.channels().enabled());
         pnlChannels_ = new ChannelTablePanel(model_, cbxUseChannels_);
@@ -140,6 +143,9 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
         scrDevices.getVerticalScrollBar().setUnitIncrement(16);
 
         final Panel pnlButtons = new Panel();
+        btnStart_ = new Button("Start acquisition", 140, 30);
+        btnStart_.setToolTipText("Start an acquisition with these settings, as the Acquisition "
+                + "tab's Start Acquisition does; Stop ends it.");
         btnSnap_ = new Button("Snap", 90, 30);
         btnLive_ = new Button("Live", 90, 30);
         btnTestVolume_ = new Button("Test volume", 110, 30);
@@ -149,8 +155,8 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
         btnTestVolume_.setToolTipText("Acquire one volume with these settings, without saving "
                 + "it, flipped as set on the Cameras tab.");
         btnStop_.setToolTipText("Stop the acquisition or the Test autofocus in progress.");
-        pnlButtons.add(btnSnap_, "");
-        pnlButtons.add(btnLive_, "");
+        // two rows: running, then looking
+        pnlButtons.add(btnStart_, "");
         pnlButtons.add(btnTestVolume_, "");
         pnlButtons.add(btnStop_, "");
         final Button btnSend = new Button("Send to scapecontrol", 160, 30);
@@ -158,7 +164,9 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
                 + "Micro-Manager's profile, where scapecontrol's import_setup and autofocus "
                 + "read them. Also done when LSM closes.");
         btnSend.registerListener(this::sendToScapecontrol);
-        pnlButtons.add(btnSend, "gapleft 20");
+        pnlButtons.add(btnSend, "gapleft 20, wrap");
+        pnlButtons.add(btnSnap_, "span 4, split 4, center");
+        pnlButtons.add(btnLive_, "");
         final ComboBox<String> cmbLiveCamera = pnlDevices_.liveCameraControl();
         if (cmbLiveCamera != null) {
             cmbLiveCamera.setToolTipText("Switch the camera Live shows; Live keeps running.");
@@ -176,7 +184,8 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
         // devices first: they are set up before the piezo and its autofocus
         tabsRight.addTab("Devices", scrDevices);
         tabsRight.addTab("Piezo / Autofocus", pnlPiezo_);
-        pnlRight.add(tabsRight, "w 360!, h 470!");
+        pnlRight.add(tabsRight, "w 360!, h 400!, wrap");
+        pnlRight.add(new DurationPanel(model_), "growx");
 
         add(pnlLeft_, "aligny top");
         add(pnlCenter_, "aligny top");
@@ -213,15 +222,19 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
         btnSnap_.registerListener(() -> model_.studio().live().snap(true));
         btnLive_.registerListener(() -> model_.studio().live().setLiveModeOn(
                 !model_.studio().live().isLiveModeOn()));
-        btnTestVolume_.registerListener(this::runTestVolume);
+        btnTestVolume_.registerListener(() -> startRun(true));
         btnStop_.registerListener(() -> {
             if (busy_) {
                 pnlPiezo_.cancel(); // a Test autofocus: it puts everything back as it stops
             }
-            if (model_.acquisitions().isRunning()) {
+            // confirm first, as the Acquisition tab does: one stray click discards a run
+            if (model_.acquisitions().isRunning() && DialogUtils.showYesNoDialog(this,
+                    "Stop Acquisition", "Stop the current acquisition?")
+                    && model_.acquisitions().isRunning()) {
                 model_.acquisitions().requestStop();
             }
         });
+        btnStart_.registerListener(() -> startRun(false));
     }
 
     /**
@@ -256,7 +269,8 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
         studio.app().refreshGUIFromCache();
     }
 
-    private void runTestVolume() {
+    /** A test volume (never saved) or an acquisition, with these settings. */
+    private void startRun(final boolean testVolume) {
         if (model_.studio().live().isLiveModeOn()) {
             model_.studio().live().setLiveModeOn(false);
         }
@@ -268,21 +282,26 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
             exposureCommit_.stop();
             setCameraExposure(spnExposure_.getDouble());
         }
-        // as the Acquisition tab's buttons do: no second run from another tab meanwhile
-        frame_.setTabsEnabled(false);
+        runAndWait(testVolume
+                ? model_.acquisitions().requestTestAcquisition()
+                : model_.acquisitions().requestRun());
+    }
+
+    /** Locks the tabs until the run ends, as the Acquisition tab's buttons do. */
+    private void runAndWait(final Future<?> finished) {
+        frame_.setTabsEnabled(false); // no second run from another tab meanwhile
         showRunning(true);
-        final Future<?> finished = model_.acquisitions().requestTestAcquisition();
         final Thread waiter = new Thread(() -> {
             try {
                 finished.get();
             } catch (Exception e) {
-                model_.logging().reportError(e, "The test volume ended with an error");
+                model_.logging().reportError(e, "The acquisition ended with an error");
             }
             SwingUtilities.invokeLater(() -> {
                 frame_.setTabsEnabled(true);
                 showRunning(model_.acquisitions().isRunning() || busy_);
             });
-        }, "Experiment Setup test volume");
+        }, "Experiment Setup acquisition");
         waiter.setDaemon(true);
         waiter.start();
     }
