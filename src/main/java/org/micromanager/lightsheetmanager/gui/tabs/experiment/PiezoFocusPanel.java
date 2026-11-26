@@ -71,8 +71,8 @@ public class PiezoFocusPanel extends Panel {
                 setup.measure(), 100, 22);
         cmbMeasure_.setToolTipText("tenengrad: edge strength, for any sample; "
                 + "dcts: for dense samples, it misranks sparse beads.");
-        cmbCamera_ = new ComboBox<>(cameraChoices(), orAsNow(setup.camera()), 130, 22);
-        cmbChannel_ = new ComboBox<>(channelChoices(), orAsNow(setup.channelPreset()), 130, 22);
+        cmbCamera_ = new ComboBox<>(cameraChoices(), orAsNow(setup.camera()), 150, 22);
+        cmbChannel_ = new ComboBox<>(channelChoices(), orAsNow(setup.channelPreset()), 150, 22);
         spnExposure_ = Spinner.createDoubleSpinner(setup.exposureMs(), 0.01, 10000.0, 1.0, 5);
         btnTest_ = new Button("Test autofocus", 140, 26);
         btnTest_.setToolTipText("Search as scapecontrol will and show the correction; the piezo "
@@ -92,8 +92,9 @@ public class PiezoFocusPanel extends Panel {
         add(spnFine_, "wrap");
         add(new JLabel("Measure:"), "");
         add(cmbMeasure_, "wrap");
-        add(new JLabel("Camera / channel:"), "");
-        add(cmbCamera_, "split 2");
+        add(new JLabel("Camera:"), "");
+        add(cmbCamera_, "wrap");
+        add(new JLabel("Channel:"), "");
         add(cmbChannel_, "wrap");
         add(new JLabel("Exposure [ms]:"), "");
         add(spnExposure_, "wrap");

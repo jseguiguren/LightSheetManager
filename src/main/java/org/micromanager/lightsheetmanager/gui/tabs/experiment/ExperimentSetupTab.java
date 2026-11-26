@@ -8,6 +8,7 @@ import java.util.Objects;
 import java.util.concurrent.Future;
 import javax.swing.JLabel;
 import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import org.micromanager.Studio;
@@ -157,13 +158,17 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
             frame_.setTabsEnabled(!busy); // no run from another tab during the test
             showRunning(model_.acquisitions().isRunning() || busy);
         });
-        pnlRight.add(pnlPiezo_, "growx, wrap");
-        pnlRight.add(scrDevices, "w 380!, h 220!, wrap");
-        pnlRight.add(pnlButtons, "");
+        // two sub-tabs share the right column: stacked, they did not fit the window
+        final JTabbedPane tabsRight = new JTabbedPane();
+        tabsRight.addTab("Piezo / Autofocus", pnlPiezo_);
+        tabsRight.addTab("Devices", scrDevices);
+        pnlRight.add(tabsRight, "w 360!, h 470!");
 
         add(pnlLeft_, "aligny top");
         add(pnlCenter_, "aligny top");
-        add(pnlRight, "aligny top");
+        add(pnlRight, "aligny top, wrap");
+        // under all three columns, as on the Acquisition tab
+        add(pnlButtons, "span 3, center");
         btnStop_.setEnabled(false);
         showRunning(model_.acquisitions().isRunning());
     }
