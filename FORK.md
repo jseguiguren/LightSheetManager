@@ -24,9 +24,11 @@ Upstream: `candidate` (not proposed yet), a pull request link with its state, or
 | Restore the sheet after a SCAPE run | #1 | candidate |
 | CI builds against the Micro-Manager nightly the rig runs, and runs the unit tests | #2 | fork-only |
 | Per-camera flip of the Live view (Camera tab), never applied to acquired data | #2 | candidate |
-| The camera panel and the channel table follow loaded settings (they kept stale camera boxes and rows) | (next PR) | candidate |
-| Default slice step 1 µm (upstream 0.5 µm); saved settings keep theirs | (next PR) | fork-only |
-| Experiment Setup tab: cameras, one exposure, volume as range and step in µm, channels, time points, named positions, configuration groups (lasers in %), Snap, Live, test volume, Stop; a test acquisition shows the Live flip | (next PR) | fork-only |
+| The camera panel and the channel table follow loaded settings (they kept stale camera boxes and rows) | #4 | candidate |
+| Update Offset reads the piezo through the Core (a failed read made 0 the offset) | #4 | candidate |
+| Piezo and Autofocus panel on the Experiment Setup tab: reference, live piezo, Test autofocus (scapecontrol ADR-0037) | #4 | fork-only |
+| Default slice step 1 µm (upstream 0.5 µm); saved settings keep theirs | #4 | fork-only |
+| Experiment Setup tab: cameras, one exposure, volume as range and step in µm, channels, time points, named positions, configuration groups (lasers in %), Snap, Live, test volume, Stop; a test acquisition shows the Live flip | #4 | fork-only |
 
 ## Fork-only pieces
 
