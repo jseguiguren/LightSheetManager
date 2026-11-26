@@ -67,7 +67,7 @@ public class CropPanel extends Panel {
         add(btnApply, "split 2, span");
         add(btnFull, "wrap");
         add(btnFromLive, "span, wrap");
-        add(lblResult_, "span, w 230!");
+        add(lblResult_, "span, w 230!, h 32!"); // two lines, wrapped (showResult)
 
         cmbUnit_.registerListener(this::convertFields);
         btnApply.registerListener(() -> apply(false));
@@ -113,18 +113,25 @@ public class CropPanel extends Panel {
         }
     }
 
+    /** Wrapped to the label's two lines: a long message was cut off with "...". */
+    private void showResult(final String text) {
+        lblResult_.setText("<html><body style='width:220px'>" + text.replace("&", "&amp;")
+                .replace("<", "&lt;") + "</body></html>");
+    }
+
     /** Converts the two fields when the unit changes, so the size stays the same. */
     private void convertFields() {
         final double um = pixelSizeUm();
         if (um <= 0) {
             cmbUnit_.setSelected(PX);
-            lblResult_.setText("No pixel size for this camera and binning: px only.");
+            showResult("No pixel size for this camera and binning: px only.");
             return;
         }
         final boolean toUm = UM.equals(cmbUnit_.getSelected());
         final double factor = toUm ? um : 1.0 / um;
-        spnWidth_.setDouble(Math.round(spnWidth_.getDouble() * factor * 100.0) / 100.0);
-        spnHeight_.setDouble(Math.round(spnHeight_.getDouble() * factor * 100.0) / 100.0);
+        // unrounded: 256 px shown as 100.1 µm came back as 256.01 px, rounded up to 257
+        spnWidth_.setDouble(spnWidth_.getDouble() * factor);
+        spnHeight_.setDouble(spnHeight_.getDouble() * factor);
     }
 
     private int[] sizePx() {
@@ -142,7 +149,7 @@ public class CropPanel extends Panel {
         final ImagePlus image = display == null ? null : display.getImagePlus();
         final Roi roi = image == null ? null : image.getRoi();
         if (roi == null || roi.getType() != Roi.RECTANGLE) {
-            lblResult_.setText("Draw a rectangle on the Live window first (ImageJ rectangle tool).");
+            showResult("Draw a rectangle on the Live window first (ImageJ rectangle tool).");
             return;
         }
         final Rectangle r = roi.getBounds();
@@ -154,37 +161,41 @@ public class CropPanel extends Panel {
 
     private void apply(final boolean fullFrame) {
         if (model_.acquisitions().isRunning()) {
-            lblResult_.setText("Not during an acquisition.");
+            showResult("Not during an acquisition.");
             return;
         }
         final Collection<CameraBase> cameras = model_.devices().activeImagingCameras().values();
         if (cameras.isEmpty()) {
-            lblResult_.setText("No active imaging camera.");
+            showResult("No active imaging camera.");
             return;
         }
         // one crop for all: the cameras must have the same frame
         final Rectangle frame = frame(cameras.iterator().next());
         for (final CameraBase camera : cameras) {
             if (!frame(camera).equals(frame)) {
-                lblResult_.setText("The cameras differ in sensor size or binning: set the same "
+                showResult("The cameras differ in sensor size or binning: set the same "
                         + "binning on both first.");
                 return;
             }
         }
         final Rectangle crop;
+        boolean past = false;
         try {
             if (fullFrame) {
                 crop = frame;
             } else {
                 final int[] px = sizePx();
                 crop = CenteredCrop.centered(frame.width, frame.height, px[0], px[1]);
+                // a size past the frame is clamped to it: say so, it looked like a bug
+                past = px[0] > frame.width || px[1] > frame.height;
             }
         } catch (IllegalArgumentException e) {
-            lblResult_.setText(e.getMessage());
+            showResult(e.getMessage());
             return;
         }
+        final boolean clamped = past;
         final Studio studio = model_.studio();
-        lblResult_.setText("Applying crop...");
+        showResult("Applying crop...");
         busy_.accept(true);
         // off the EDT: stopping Live, reconfiguring each camera (PVCAM rebuilds its acquisition
         // setup for a new ROI) and starting Live again take a while, and the window stays usable
@@ -212,11 +223,13 @@ public class CropPanel extends Panel {
                 model_.acquisitions().updateDurationLabels(); // the slice timing depends on it
                 refresh();
                 final double um = pixelSizeUm();
-                lblResult_.setText(failed.length() > 0
+                showResult(failed.length() > 0
                         ? "Not set on " + failed
-                        : String.format("Cropped to %d x %d px%s, centred.", crop.width,
-                                crop.height, um > 0 ? String.format(" (%.1f x %.1f µm)",
-                                        crop.width * um, crop.height * um) : ""));
+                        : String.format("%s %d x %d px%s.",
+                                clamped ? "Larger than the frame: cropped to" : "Cropped to",
+                                crop.width, crop.height, um > 0 ? String.format(
+                                        " (%.1f x %.1f µm)", crop.width * um, crop.height * um)
+                                        : ""));
                 busy_.accept(false);
             });
         }, "Experiment Setup crop");
