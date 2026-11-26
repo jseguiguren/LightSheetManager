@@ -32,6 +32,7 @@ import org.micromanager.lightsheetmanager.api.data.SaveMode;
 import org.micromanager.lightsheetmanager.api.internal.DefaultTimingSettings;
 import org.micromanager.lightsheetmanager.api.internal.ScapeAcquisitionSettings;
 import org.micromanager.lightsheetmanager.LightSheetManager;
+import org.micromanager.lightsheetmanager.gui.tabs.acquisition.DurationPanel;
 import org.micromanager.lightsheetmanager.liveview.LiveViewPipeline;
 import org.micromanager.lightsheetmanager.model.PLogicScape;
 import org.micromanager.lightsheetmanager.model.devices.DeviceAdapter;
@@ -563,8 +564,8 @@ public class AcquisitionEngineScape extends AcquisitionEngine {
                     .prefix(prefix);
         }
 
-        // the Live view orientation step must not flip the images stored by this acquisition
-        LiveViewPipeline.keepOutOfAcquisitions(studio_);
+        // the Live view orientation step flips a test acquisition's window, never stored images
+        final boolean flipped = LiveViewPipeline.prepareForAcquisition(studio_, isTestAcquisition());
         MMAcquisition acq = new MMAcquisition(studio_, dsmd,
                 this, sequenceSettingsBuilder.build());
 
@@ -602,7 +603,7 @@ public class AcquisitionEngineScape extends AcquisitionEngine {
         }
 
         // after the directory check above, so a dataset that could not be created gets no window
-        createAcquisitionDisplay(dsmd);
+        createAcquisitionDisplay(dsmd, flipped);
 
         // TODO if position time ordering ever implemented, this should be reactivated and the
         //  timelapse hook copied from org.micromanager.acquisition.internal.acqengjcompat.AcqEngJAdapter
@@ -837,8 +838,9 @@ public class AcquisitionEngineScape extends AcquisitionEngine {
      * closed.
      *
      * @param summary the summary metadata the dataset was created with, which names its channels
+     * @param flipped whether the Live view orientation flips this test acquisition's images
      */
-    private void createAcquisitionDisplay(final SummaryMetadata summary) {
+    private void createAcquisitionDisplay(final SummaryMetadata summary, final boolean flipped) {
         // before the window: closing the last window closes the store only if it is managed
         studio_.displays().manage(datastore_);
 
@@ -866,6 +868,10 @@ public class AcquisitionEngineScape extends AcquisitionEngine {
         display.setDisplaySettingsProfileKey(profileKey);
         // ahead of the display manager's listener at 100, which is the one that closes the store
         display.addListener(liveWindowCloseGuard_, 1);
+        if (flipped) {
+            display.setCustomTitle(display.getName()
+                    + " - test, flipped as in Live, not saved");
+        }
     }
 
     /**
@@ -2105,9 +2111,11 @@ public class AcquisitionEngineScape extends AcquisitionEngine {
         model_.acquisitions().recalculateSliceTiming();
         model_.acquisitions().updateSettings();
         // update durations now that settings are current
-        updateSlicePeriodLabel(pnlDuration_.getSliceDurationLabel());
-        updateVolumeDurationLabel(pnlDuration_.getVolumeDurationLabel());
-        updateTotalTimeDurationLabel(pnlDuration_.getTotalDurationLabel());
+        for (final DurationPanel panel : durationPanels_) {
+            updateSlicePeriodLabel(panel.getSliceDurationLabel());
+            updateVolumeDurationLabel(panel.getVolumeDurationLabel());
+            updateTotalTimeDurationLabel(panel.getTotalDurationLabel());
+        }
     }
 
     private void updateSlicePeriodLabel(final JLabel label) {

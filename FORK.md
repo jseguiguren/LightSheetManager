@@ -24,12 +24,20 @@ Upstream: `candidate` (not proposed yet), a pull request link with its state, or
 | Restore the sheet after a SCAPE run | #1 | candidate |
 | CI builds against the Micro-Manager nightly the rig runs, and runs the unit tests | #2 | fork-only |
 | Per-camera flip of the Live view (Camera tab), never applied to acquired data | #2 | candidate |
+| The camera panel and the channel table follow loaded settings (they kept stale camera boxes and rows) | #4 | candidate |
+| Update Offset reads the piezo through the Core (a failed read made 0 the offset) | #4 | candidate |
+| Piezo and Autofocus panel on the Experiment Setup tab: reference, live piezo, Test autofocus with a plot of its scores (scapecontrol ADR-0037) | #4 | fork-only |
+| Default slice step 1 µm (upstream 0.5 µm); saved settings keep theirs | #4 | fork-only |
+| Experiment Setup tab: cameras, one exposure, volume as range and step in µm, channels, time points, named positions, configuration groups (lasers in %), Snap, Live, test volume, Stop, the run's status and progress bar; a test acquisition shows the Live flip | #4 | fork-only |
+| Main window 70 px taller (750), so the Experiment Setup tab's autofocus panel and status row fit | #4 | fork-only |
 
 ## Fork-only pieces
 
 - `.github/workflows/test.yml` downloads `MMJ_.jar` from a pinned Micro-Manager nightly
   (`MM_NIGHTLY`) and checks its SHA-256 (`MMJ_SHA256`). After the rig moves to a new nightly,
   update both lines together. Upstream builds against its own copy of the jar.
+- The same workflow keeps the built plugin jar as a run artifact (30 days), named for the
+  commit: the PR's Checks page, the run, Artifacts.
 - `.github/workflows/release_jar.yml` comes from upstream unchanged and runs on a push to `main`
   that touches `pom.xml`; it would tag and release from this fork too.
 

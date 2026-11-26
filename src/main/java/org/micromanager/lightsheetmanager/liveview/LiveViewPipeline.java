@@ -48,25 +48,59 @@ public final class LiveViewPipeline {
     }
 
     /**
+     * Sets the step for the acquisition about to start: on for a test acquisition, which is
+     * never saved, so its window shows the cameras as Live does; off for any other, so stored
+     * images are never flipped. Call before the acquisition copies the pipeline.
+     *
+     * @return {@code true} if the acquisition's images will be flipped
+     */
+    public static boolean prepareForAcquisition(final Studio studio,
+                                                final boolean testAcquisition) {
+        keepOutOfAcquisitions(studio);
+        if (!testAcquisition) {
+            return false;
+        }
+        final boolean[] flipped = {false};
+        onEdt(studio, () -> {
+            final int index = indexOfStep(studio);
+            if (index >= 0 && !LiveViewOrientation.fromPropertyMap(
+                    configurators(studio).get(index).getSettings()).isEmpty()) {
+                studio.data().setApplicationPipelineStepEnabled(index, true);
+                flipped[0] = true;
+            }
+        });
+        return flipped[0];
+    }
+
+    /**
      * Disables the step for acquisitions if someone ticked it in the pipeline window, so the
      * acquisition about to start stores unflipped images. Call before the acquisition copies
      * the pipeline, from any thread: the work runs on the EDT, so it cannot race someone
      * editing the pipeline window.
      */
     public static void keepOutOfAcquisitions(final Studio studio) {
+        onEdt(studio, () -> disableForAcquisitions(studio));
+    }
+
+    /** {@link #keepOutOfAcquisitions}, queued on the EDT without waiting for it. */
+    public static void keepOutOfAcquisitionsLater(final Studio studio) {
+        SwingUtilities.invokeLater(() -> disableForAcquisitions(studio));
+    }
+
+    private static void onEdt(final Studio studio, final Runnable work) {
         if (SwingUtilities.isEventDispatchThread()) {
-            disableForAcquisitions(studio);
+            work.run();
             return;
         }
         try {
-            SwingUtilities.invokeAndWait(() -> disableForAcquisitions(studio));
+            SwingUtilities.invokeAndWait(work);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            studio.logs().logError(e, "Interrupted while keeping \""
-                    + LiveViewOrientationPlugin.NAME + "\" out of the acquisition.");
+            studio.logs().logError(e, "Interrupted while setting \""
+                    + LiveViewOrientationPlugin.NAME + "\" for the acquisition.");
         } catch (InvocationTargetException e) {
-            studio.logs().logError(e, "Could not check that \""
-                    + LiveViewOrientationPlugin.NAME + "\" is off for the acquisition.");
+            studio.logs().logError(e, "Could not set \""
+                    + LiveViewOrientationPlugin.NAME + "\" for the acquisition.");
         }
     }
 

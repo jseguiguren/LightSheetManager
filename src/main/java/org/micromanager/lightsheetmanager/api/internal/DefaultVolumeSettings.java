@@ -127,7 +127,7 @@ public class DefaultVolumeSettings implements VolumeSettings {
         private int numViews = 1;
         private int slicesPerView = 10;
         private double delayBeforeView = 50;
-        private double sliceStepSize = 0.5;
+        private double sliceStepSize = 1.0; // fork: 1 µm (upstream 0.5)
         private double startPosition = 0.0;
         private double centerPosition = 0.0;
         private double endPosition = 0.0;

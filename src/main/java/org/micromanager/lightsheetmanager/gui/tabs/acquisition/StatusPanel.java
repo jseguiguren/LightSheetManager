@@ -33,11 +33,24 @@ public class StatusPanel extends Panel {
     private final Timer timer;
 
     public StatusPanel(final LightSheetManager model) {
+        this(model, false);
+    }
+
+    /**
+     * @param oneRow fork: the message, the bar and the count side by side, without the titled
+     *     border, for the Experiment Setup tab's row under its buttons
+     */
+    public StatusPanel(final LightSheetManager model, final boolean oneRow) {
         super("Status");
         engine = Objects.requireNonNull(model).acquisitions();
 
         // the bar takes the width the image count leaves
-        setMigLayout("", "[grow, fill][]", "");
+        if (oneRow) {
+            setBorder(null);
+            setMigLayout("insets 0", "[330!]10[grow, fill][]", "");
+        } else {
+            setMigLayout("", "[grow, fill][]", "");
+        }
 
         lblStatus = new JLabel();
         // two lines high, so a long message wraps instead of resizing the panel
@@ -49,7 +62,7 @@ public class StatusPanel extends Panel {
         // its filled part
         lblImages = new JLabel();
 
-        add(lblStatus, "span 2, wmin 0, h " + 2 * lineHeight + "!, wrap");
+        add(lblStatus, (oneRow ? "" : "span 2, wrap, ") + "wmin 0, h " + 2 * lineHeight + "!");
         add(barImages, "wmin 0");
         add(lblImages, "");
 
