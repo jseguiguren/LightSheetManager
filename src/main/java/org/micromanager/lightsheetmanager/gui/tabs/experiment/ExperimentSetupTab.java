@@ -18,6 +18,7 @@ import org.micromanager.lightsheetmanager.api.AcquisitionSettings;
 import org.micromanager.lightsheetmanager.api.internal.ScapeAcquisitionSettings;
 import org.micromanager.lightsheetmanager.gui.components.Button;
 import org.micromanager.lightsheetmanager.gui.components.CheckBox;
+import org.micromanager.lightsheetmanager.gui.components.ComboBox;
 import org.micromanager.lightsheetmanager.gui.components.ListeningPanel;
 import org.micromanager.lightsheetmanager.gui.components.Panel;
 import org.micromanager.lightsheetmanager.gui.components.SettingsListener;
@@ -152,6 +153,12 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
         pnlButtons.add(btnLive_, "");
         pnlButtons.add(btnTestVolume_, "");
         pnlButtons.add(btnStop_, "");
+        final ComboBox<String> cmbLiveCamera = pnlDevices_.liveCameraControl();
+        if (cmbLiveCamera != null) {
+            cmbLiveCamera.setToolTipText("Switch the camera Live shows; Live keeps running.");
+            pnlButtons.add(new JLabel("Live camera:"), "gapleft 20");
+            pnlButtons.add(cmbLiveCamera, "");
+        }
 
         pnlPiezo_ = new PiezoFocusPanel(model_, busy -> {
             busy_ = busy;
@@ -160,8 +167,9 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
         });
         // two sub-tabs share the right column: stacked, they did not fit the window
         final JTabbedPane tabsRight = new JTabbedPane();
-        tabsRight.addTab("Piezo / Autofocus", pnlPiezo_);
+        // devices first: they are set up before the piezo and its autofocus
         tabsRight.addTab("Devices", scrDevices);
+        tabsRight.addTab("Piezo / Autofocus", pnlPiezo_);
         pnlRight.add(tabsRight, "w 360!, h 470!");
 
         add(pnlLeft_, "aligny top");

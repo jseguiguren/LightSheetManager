@@ -45,6 +45,10 @@ public class PiezoFocusPanel extends Panel {
     private final ComboBox<String> cmbChannel_;
     private final Spinner spnExposure_;
     private final Button btnTest_;
+    private final Button btnGoToFocus_;
+    // the last focus a test found, in µm, for the reference it was found from; null for none
+    private Double lastFocusUm_;
+    private double lastReferenceUm_;
     private final Timer poll_;
     private volatile boolean testing_;
     private volatile boolean cancel_;
@@ -77,6 +81,11 @@ public class PiezoFocusPanel extends Panel {
         btnTest_ = new Button("Test autofocus", 140, 26);
         btnTest_.setToolTipText("Search as scapecontrol will and show the correction; the piezo "
                 + "goes back, nothing is saved or changed.");
+        btnGoToFocus_ = new Button("Go to focus", 110, 26);
+        btnGoToFocus_.setToolTipText("Move the piezo to the focus the last test found, to look at "
+                + "it in Live. The reference stays as it is, and an acquisition still starts "
+                + "from the Imaging Center.");
+        btnGoToFocus_.setEnabled(false);
 
         add(new JLabel("Piezo:"), "");
         add(lblPiezo_, "wrap");
@@ -98,8 +107,9 @@ public class PiezoFocusPanel extends Panel {
         add(cmbChannel_, "wrap");
         add(new JLabel("Exposure [ms]:"), "");
         add(spnExposure_, "wrap");
-        add(btnTest_, "span 2, wrap");
-        add(lblResult_, "span 2");
+        add(btnTest_, "span 2, split 2");
+        add(btnGoToFocus_, "wrap");
+        add(lblResult_, "span 2, w 330!");
 
         btnSetReference.registerListener(this::setReference);
         final Runnable saveSearch = this::saveSearch;
@@ -112,13 +122,14 @@ public class PiezoFocusPanel extends Panel {
                 setup.setImaging(fromAsNow(cmbCamera_.getSelected()),
                         fromAsNow(cmbChannel_.getSelected()), spnExposure_.getDouble());
             } catch (IllegalArgumentException e) {
-                lblResult_.setText("Not saved: " + e.getMessage());
+                showResult("Not saved: " + e.getMessage());
             }
         };
         cmbCamera_.registerListener(saveImaging);
         cmbChannel_.registerListener(saveImaging);
         spnExposure_.registerListener(saveImaging);
         btnTest_.registerListener(this::runTest);
+        btnGoToFocus_.registerListener(this::goToFocus);
         poll_ = new Timer(500, e -> showPositions());
         showPositions();
     }
@@ -168,6 +179,64 @@ public class PiezoFocusPanel extends Panel {
         }
     }
 
+    /** Wrapped to the panel's width; a long reason no longer runs out of the window. */
+    private void showResult(final String text) {
+        lblResult_.setText("<html><body style='width:300px'>"
+                + text.replace("&", "&amp;").replace("<", "&lt;") + "</body></html>");
+    }
+
+    private void forgetFocus() {
+        lastFocusUm_ = null;
+        btnGoToFocus_.setEnabled(false);
+    }
+
+    /**
+     * Moves the piezo to the last focus found, after checking it again against the window
+     * around the current reference and the piezo's travel. Never changes the reference.
+     */
+    private void goToFocus() {
+        final FocusSetup setup = model_.pluginSettings().focusSetup();
+        final Double target = lastFocusUm_;
+        if (target == null || model_.acquisitions().isRunning() || testing_) {
+            return;
+        }
+        if (!setup.hasReference() || setup.referenceImagingCenterUm() != lastReferenceUm_
+                || Math.abs(target - setup.referenceImagingCenterUm()) > setup.rangeUm() + 1e-9) {
+            forgetFocus();
+            showResult("Not moved: the reference or the range changed since the test; test again.");
+            return;
+        }
+        final DeviceBase piezo = model_.devices().device("ImagingFocus");
+        testing_ = true;
+        busy_.accept(true);
+        final Thread mover = new Thread(() -> {
+            String text;
+            try {
+                final mmcorej.CMMCore core = model_.studio().core();
+                final String name = piezo.getDeviceName();
+                final double lower = Double.parseDouble(core.getProperty(name, "LowerLim(mm)")) * 1000.0;
+                final double upper = Double.parseDouble(core.getProperty(name, "UpperLim(mm)")) * 1000.0;
+                if (!(lower <= target && target <= upper)) {
+                    throw new IllegalStateException(target + " µm is outside the piezo's travel");
+                }
+                core.setPosition(name, target);
+                core.waitForDevice(name);
+                text = String.format("Piezo at the focus, %+.3f µm from the reference.",
+                        target - setup.referenceImagingCenterUm());
+            } catch (Exception e) {
+                text = "Not moved: " + e.getMessage();
+            }
+            final String result = text;
+            SwingUtilities.invokeLater(() -> {
+                showResult(result);
+                testing_ = false;
+                busy_.accept(false);
+                showPositions();
+            });
+        }, "Go to focus");
+        mover.start();
+    }
+
     private void setReference() {
         if (model_.acquisitions().isRunning()) {
             model_.studio().logs().showError("The reference cannot be set during an acquisition.");
@@ -179,6 +248,7 @@ public class PiezoFocusPanel extends Panel {
                     .sheetCalibration().imagingCenter();
             model_.pluginSettings().focusSetup().setReference(center, offset,
                     Instant.now().truncatedTo(ChronoUnit.SECONDS).toString());
+            forgetFocus(); // found from the old reference
             model_.userSettings().notifyListeners(model_.acquisitions().settingsBuilder().build());
             showPositions();
         } catch (ImagingCenter.SheetOff e) {
@@ -194,7 +264,7 @@ public class PiezoFocusPanel extends Panel {
                     spnCoarse_.getDouble(), spnFine_.getDouble(), cmbMeasure_.getSelected());
             lblResult_.setText(" ");
         } catch (IllegalArgumentException e) {
-            lblResult_.setText("Not saved: " + e.getMessage());
+            showResult("Not saved: " + e.getMessage());
         }
     }
 
@@ -205,26 +275,38 @@ public class PiezoFocusPanel extends Panel {
 
     private void runTest() {
         cancel_ = false;
+        forgetFocus();
         testing_ = true;
         busy_.accept(true);
-        lblResult_.setText("Searching...");
+        showResult("Searching...");
         final FocusSetup setup = model_.pluginSettings().focusSetup();
         final Thread worker = new Thread(() -> {
             String text;
+            Double focus = null;
+            final double reference = setup.referenceImagingCenterUm();
             try {
                 final FocusSearch.Result r = TestAutofocus.run(model_, setup,
-                        line -> SwingUtilities.invokeLater(() -> lblResult_.setText(line)),
+                        line -> SwingUtilities.invokeLater(() -> showResult(line)),
                         () -> cancel_);
                 text = r.ok
                         ? String.format("Focus at %+.3f µm from the reference (%d frames). "
                                 + "Nothing was changed.", r.deltaUm, r.samples.size())
                         : "Not found: " + r.reason + " (" + r.samples.size() + " frames).";
+                if (r.ok) {
+                    focus = reference + r.deltaUm;
+                }
             } catch (Exception e) {
                 text = "Not run: " + e.getMessage();
             }
             final String result = text;
+            final Double found = focus;
             SwingUtilities.invokeLater(() -> {
-                lblResult_.setText(result);
+                showResult(result);
+                if (found != null) {
+                    lastFocusUm_ = found;
+                    lastReferenceUm_ = reference;
+                    btnGoToFocus_.setEnabled(true);
+                }
                 testing_ = false;
                 busy_.accept(false);
             });

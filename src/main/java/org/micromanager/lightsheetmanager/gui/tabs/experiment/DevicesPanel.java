@@ -2,7 +2,13 @@ package org.micromanager.lightsheetmanager.gui.tabs.experiment;
 
 import java.awt.Component;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -31,6 +37,9 @@ public class DevicesPanel extends Panel {
     private final LightSheetManager model_;
     private final CMMCore core_;
     private final List<Runnable> refreshers_ = new ArrayList<>();
+    // groups that set the Core camera: switching it under Live needs Live suspended
+    private final Set<String> cameraGroups_ = new HashSet<>();
+    private final Map<String, List<String>> presets_ = new HashMap<>();
     private final ExecutorService writer_ = Executors.newSingleThreadExecutor(r -> {
         final Thread t = new Thread(r, "Experiment Setup devices");
         t.setDaemon(true);
@@ -65,6 +74,26 @@ public class DevicesPanel extends Panel {
         super.removeNotify();
     }
 
+    /** The unit in a property's name ("LED Intensity(%)": "%"); "V" for a laser's Voltage. */
+    static String unitOf(final String property) {
+        final Matcher m = Pattern.compile("\\(([^)]+)\\)\\s*$").matcher(property);
+        if (m.find()) {
+            return m.group(1);
+        }
+        return "Voltage".equals(property) ? "V" : "";
+    }
+
+    /**
+     * A second dropdown for the group that switches the Core camera, for the tab's button row,
+     * or null if there is none. It writes as the one in this panel does, under suspended Live.
+     */
+    public ComboBox<String> liveCameraControl() {
+        for (final String group : cameraGroups_) {
+            return presetCombo(group, presets_.get(group));
+        }
+        return null;
+    }
+
     private void addGroup(final String group) throws Exception {
         final List<String> presets = new ArrayList<>();
         final List<String> properties = new ArrayList<>();
@@ -72,7 +101,11 @@ public class DevicesPanel extends Panel {
             presets.add(preset);
             final Configuration data = core_.getConfigData(group, preset);
             for (long i = 0; i < data.size(); i++) {
-                properties.add(data.getSetting(i).getPropertyName());
+                final PropertySetting s = data.getSetting(i);
+                properties.add(s.getPropertyName());
+                if ("Core".equals(s.getDeviceLabel()) && "Camera".equals(s.getPropertyName())) {
+                    cameraGroups_.add(group);
+                }
             }
         }
         final Configuration first = presets.isEmpty()
@@ -92,6 +125,11 @@ public class DevicesPanel extends Panel {
     }
 
     private void addPresets(final String group, final List<String> presets) {
+        presets_.put(group, presets);
+        addRow(group, presetCombo(group, presets), null);
+    }
+
+    private ComboBox<String> presetCombo(final String group, final List<String> presets) {
         final ComboBox<String> cmb = new ComboBox<>(presets.toArray(new String[0]), null, 140, 22);
         final boolean[] refreshing = {false};
         final Runnable show = () -> {
@@ -110,14 +148,25 @@ public class DevicesPanel extends Panel {
                 return;
             }
             final String preset = cmb.getSelected();
+            final boolean camera = cameraGroups_.contains(group);
             write(group + " to " + preset, () -> {
-                core_.setConfig(group, preset);
-                core_.waitForConfig(group, preset);
+                // a camera switched under a running Live: suspend it, as Studio does
+                if (camera) {
+                    model_.studio().live().setSuspended(true);
+                }
+                try {
+                    core_.setConfig(group, preset);
+                    core_.waitForConfig(group, preset);
+                } finally {
+                    if (camera) {
+                        model_.studio().live().setSuspended(false);
+                    }
+                }
             }, show);
         });
         refreshers_.add(show);
         show.run();
-        addRow(group, cmb, null);
+        return cmb;
     }
 
     private void addProperty(final String group, final String device, final String property)
@@ -140,6 +189,7 @@ public class DevicesPanel extends Panel {
                 core_.getPropertyUpperLimit(device, property));
         final Spinner spn = Spinner.createDoubleSpinner(0.0, 0.0, 100.0, 1.0, 5);
         final JLabel lblValue = new JLabel();
+        final String unit = unitOf(property);
         final boolean[] refreshing = {false};
         spn.setToolTipText(group + ": " + device + " " + property + ", in % of its range "
                 + format(scale.lower()) + " to " + format(scale.upper()));
@@ -149,7 +199,8 @@ public class DevicesPanel extends Panel {
                 final double value = Double.parseDouble(
                         core_.getPropertyFromCache(device, property));
                 spn.setDouble(scale.toPercent(value));
-                lblValue.setText("% (" + format(value) + " of " + format(scale.upper()) + ")");
+                lblValue.setText("% (" + format(value) + " " + unit + " of "
+                        + format(scale.upper()) + " " + unit + ")");
             } catch (Exception e) {
                 model_.studio().logs().logError(e);
             }
