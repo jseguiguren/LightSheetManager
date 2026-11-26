@@ -54,6 +54,7 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
     private PositionsPanel pnlPositions_;
     private DevicesPanel pnlDevices_;
     private PiezoFocusPanel pnlPiezo_;
+    private CropPanel pnlCrop_;
     private Panel pnlLeft_;
     private Panel pnlCenter_;
 
@@ -78,7 +79,11 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
         createUserInterface();
         createEventHandlers();
         model_.userSettings().addChangeListener(this);
-        runPoll_ = new Timer(200, e -> showRunning(model_.acquisitions().isRunning() || busy_));
+        runPoll_ = new Timer(200, e -> {
+            showRunning(model_.acquisitions().isRunning() || busy_);
+            // Live can also be started and stopped from Micro-Manager's own window
+            btnLive_.setText(model_.studio().live().isLiveModeOn() ? "Stop Live" : "Live");
+        });
     }
 
     @Override
@@ -114,7 +119,13 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
         pnlExposure.add(new JLabel("Exposure [ms]:"), "");
         pnlExposure.add(spnExposure_, "");
 
-        pnlLeft_.add(new CameraPanel(model_), "growx, wrap");
+        // the cameras, and their crop: one tab each, they share the column's space
+        final JTabbedPane tabsCameras = new JTabbedPane();
+        tabsCameras.addTab("Cameras", new CameraPanel(model_));
+        pnlCrop_ = new CropPanel(model_);
+        tabsCameras.addTab("Crop", pnlCrop_);
+        tabsCameras.addChangeListener(e -> pnlCrop_.refresh());
+        pnlLeft_.add(tabsCameras, "growx, wrap");
         pnlLeft_.add(pnlExposure, "growx, wrap");
         pnlLeft_.add(new VolumeRangePanel(model_), "growx, wrap");
         pnlLeft_.add(new SavePanel(model_, frame_), "growx");
@@ -152,6 +163,7 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
         btnStop_ = new Button("Stop", 90, 30);
         btnSnap_.setToolTipText("Snap the active cameras, flipped as set on the Cameras tab.");
         btnLive_.setToolTipText("Start or stop Live, flipped as set on the Cameras tab.");
+        btnLive_.setText(model_.studio().live().isLiveModeOn() ? "Stop Live" : "Live");
         btnTestVolume_.setToolTipText("Acquire one volume with these settings, without saving "
                 + "it, flipped as set on the Cameras tab.");
         btnStop_.setToolTipText("Stop the acquisition or the Test autofocus in progress.");
