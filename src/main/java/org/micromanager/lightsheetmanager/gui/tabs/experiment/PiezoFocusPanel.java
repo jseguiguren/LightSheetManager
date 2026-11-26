@@ -131,7 +131,7 @@ public class PiezoFocusPanel extends Panel {
         add(btnTest_, "span 2, wrap");
         add(btnGoToFocus_, "span 2, split 2");
         add(btnUpdateOffset, "wrap");
-        add(lblResult_, "span 2, w 320!");
+        add(lblResult_, "span 2, w 290!"); // inside the 360 px sub-tab with its border and insets
 
         btnSetReference.registerListener(this::setReference);
         final Runnable saveSearch = this::saveSearch;
@@ -212,7 +212,7 @@ public class PiezoFocusPanel extends Panel {
 
     /** Wrapped to the panel's width; a long reason no longer runs out of the window. */
     private void showResult(final String text) {
-        lblResult_.setText("<html><body style='width:280px'>"
+        lblResult_.setText("<html><body style='width:250px'>"
                 + text.replace("&", "&amp;").replace("<", "&lt;").replace("\n", "<br>")
                 + "</body></html>");
     }
