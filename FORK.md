@@ -28,7 +28,7 @@ Upstream: `candidate` (not proposed yet), a pull request link with its state, or
 | Update Offset reads the piezo through the Core (a failed read made 0 the offset) | #4 | candidate |
 | Piezo and Autofocus panel on the Experiment Setup tab: reference, live piezo, Test autofocus with a plot of its scores (scapecontrol ADR-0037) | #4 | fork-only |
 | Default slice step 1 µm (upstream 0.5 µm); saved settings keep theirs | #4 | fork-only |
-| Experiment Setup tab: cameras, one exposure, volume as range and step in µm, channels, time points, named positions, configuration groups (lasers in %), Snap, Live, test volume, Stop, the run's status and progress bar; a test acquisition shows the Live flip | #4 | fork-only |
+| Experiment Setup tab: cameras, one exposure, volume as range along the scan and step in µm (sheet angle from the Settings tab, odd slice counts, optional full coverage from the crop), channels, time points, named positions, configuration groups (lasers in %), Snap, Live, test volume, Stop, the run's status and progress bar; a test acquisition shows the Live flip | #4 | fork-only |
 | Main window 70 px taller (750), so the Experiment Setup tab's autofocus panel and status row fit | #4 | fork-only |
 
 ## Fork-only pieces

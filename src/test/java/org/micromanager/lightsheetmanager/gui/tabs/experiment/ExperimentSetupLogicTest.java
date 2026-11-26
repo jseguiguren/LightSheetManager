@@ -126,23 +126,26 @@ public class ExperimentSetupLogicTest {
     }
 
     @Test
-    public void rangeAndStepGiveTheSlices() {
-        assertEquals(101, VolumeRange.slicesFor(100.0, 1.0)); // both ends imaged
+    public void scanAndLateralStepGiveAnOddNumberOfSlices() {
+        // odd, so the centre slice is the plane Live shows (both ends imaged)
+        assertEquals(101, VolumeRange.slicesFor(100.0, 1.0));
         assertEquals(201, VolumeRange.slicesFor(100.0, 0.5));
         assertEquals(1, VolumeRange.slicesFor(0.0, 1.0));
+        assertEquals(11, VolumeRange.slicesFor(11.0, 1.0)); // an odd step count drops one step
+        assertEquals(13, VolumeRange.slicesFor(11.01, 1.0));
     }
 
     @Test
-    public void aRangeBetweenStepsGetsOneSliceMoreNeverOneLess() {
-        // whole slices that cover at least the range asked for
-        assertEquals(12, VolumeRange.slicesFor(10.4, 1.0));
-        assertEquals(12, VolumeRange.slicesFor(10.6, 1.0));
-        assertEquals(12, VolumeRange.slicesFor(10.01, 1.0));
+    public void aScanBetweenStepsRoundsToTheNearestOddCount() {
+        // ceil(steps / 2 - 0.5) * 2 + 1: at most one step short of the range at the border
+        assertEquals(11, VolumeRange.slicesFor(10.4, 1.0));
+        assertEquals(11, VolumeRange.slicesFor(10.6, 1.0));
+        assertEquals(11, VolumeRange.slicesFor(10.01, 1.0));
     }
 
     @Test
-    public void floatingPointNoiseDoesNotAddASlice() {
-        // 100 / 0.1 is 1000.0000000000001 in doubles
+    public void floatingPointNoiseDoesNotAddSlices() {
+        // 100 / 0.1 is 1000.0000000000001 and 3 / 0.1 is 30.000000000000004 in doubles
         assertEquals(1001, VolumeRange.slicesFor(100.0, 0.1));
         assertEquals(31, VolumeRange.slicesFor(3.0, 0.1));
     }
@@ -151,12 +154,42 @@ public class ExperimentSetupLogicTest {
     public void theRangeShownIsTheOneTheSlicesCover() {
         assertEquals(100.0, VolumeRange.rangeFor(101, 1.0), EPS);
         assertEquals(0.0, VolumeRange.rangeFor(1, 1.0), EPS);
-        assertEquals(11.0, VolumeRange.rangeFor(VolumeRange.slicesFor(10.4, 1.0), 1.0), EPS);
+        assertEquals(10.0, VolumeRange.rangeFor(VolumeRange.slicesFor(10.4, 1.0), 1.0), EPS);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void aStepOfZeroHasNoSlices() {
         VolumeRange.slicesFor(10.0, 0.0);
+    }
+
+    @Test
+    public void theLateralStepIsTheStepOverTheSineOfTheSheetToHorizontalAngle() {
+        // alpha from the vertical, beta = 90 - alpha from the horizontal: step / sin(beta)
+        assertEquals(1.0 / Math.sin(Math.toRadians(40.5)),
+                VolumeRange.lateralStepUm(1.0, 49.5), EPS);
+        assertEquals(1.5398, VolumeRange.lateralStepUm(1.0, 49.5), 1e-4);
+    }
+
+    @Test
+    public void eachEndGainsHalfTheCroppedHeightTimesTheSineOfAlpha() {
+        // h = 512 px / 2 * 0.195 µm/px = 49.92 µm along the sheet; g = h sin 49.5°
+        assertEquals(49.92 * Math.sin(Math.toRadians(49.5)),
+                VolumeRange.extraPerEndUm(512, 0.195, 49.5), EPS);
+        assertEquals(0.0, VolumeRange.extraPerEndUm(0, 0.195, 49.5), EPS);
+    }
+
+    @Test
+    public void theWorkedExampleOfFullCoverage() {
+        // 100 µm fully covered at 1 µm steps, 512 px crop, 0.195 µm/px, alpha 49.5°
+        final double g = VolumeRange.extraPerEndUm(512, 0.195, 49.5);
+        assertEquals(37.96, g, 0.01);
+        assertEquals(115, VolumeRange.slicesFor(100.0 + 2 * g,
+                VolumeRange.lateralStepUm(1.0, 49.5)));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void anAngleOutsideZeroToNinetyIsRefused() {
+        VolumeRange.lateralStepUm(1.0, 90.0);
     }
 
     /** device, property, device, property, ...: a group's settings as the panel reads them. */
