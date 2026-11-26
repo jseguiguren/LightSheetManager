@@ -25,6 +25,7 @@ import org.micromanager.lightsheetmanager.gui.components.SettingsListener;
 import org.micromanager.lightsheetmanager.gui.components.Spinner;
 import org.micromanager.lightsheetmanager.gui.tabs.acquisition.CameraPanel;
 import org.micromanager.lightsheetmanager.gui.tabs.acquisition.DurationPanel;
+import org.micromanager.lightsheetmanager.gui.tabs.acquisition.StatusPanel;
 import org.micromanager.lightsheetmanager.gui.tabs.acquisition.SavePanel;
 import org.micromanager.lightsheetmanager.gui.tabs.acquisition.TimePointsPanel;
 import org.micromanager.lightsheetmanager.gui.tabs.channels.ChannelTablePanel;
@@ -102,7 +103,7 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
 
     private void createUserInterface() {
         final ScapeAcquisitionSettings settings = model_.acquisitions().settings();
-        setMigLayout("", "[]10[]10[]", "[]10[]");
+        setMigLayout("", "[]10[]10[]", "[]10[]5[]");
 
         pnlLeft_ = new Panel();
         pnlLeft_.setMigLayout("insets 0", "[]", "[]5[]");
@@ -208,8 +209,9 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
         add(pnlLeft_, "aligny top");
         add(pnlCenter_, "aligny top");
         add(pnlRight, "aligny top, wrap");
-        // under all three columns, as on the Acquisition tab
-        add(pnlButtons, "span 3, center");
+        // under all three columns, as on the Acquisition tab, and the run's status under them
+        add(pnlButtons, "span 3, center, wrap");
+        add(new StatusPanel(model_, true), "span 3, center, w 640!");
         btnStop_.setEnabled(false);
         showRunning(model_.acquisitions().isRunning());
     }
