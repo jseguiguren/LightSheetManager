@@ -1,6 +1,7 @@
 package org.micromanager.lightsheetmanager.gui.tabs.setup;
 
 
+import org.micromanager.lightsheetmanager.model.ImagingCenter;
 import org.micromanager.lightsheetmanager.api.data.GeometryType;
 import org.micromanager.lightsheetmanager.api.internal.ScapeAcquisitionSettings;
 import org.micromanager.lightsheetmanager.gui.data.Icons;
@@ -8,8 +9,6 @@ import org.micromanager.lightsheetmanager.gui.components.Button;
 import org.micromanager.lightsheetmanager.gui.components.Panel;
 import org.micromanager.lightsheetmanager.gui.components.TextField;
 import org.micromanager.lightsheetmanager.LightSheetManager;
-import org.micromanager.lightsheetmanager.model.devices.vendor.ASIPiezo;
-import org.micromanager.lightsheetmanager.model.devices.vendor.ASIScanner;
 
 import javax.swing.JLabel;
 import java.awt.Dimension;
@@ -152,33 +151,19 @@ public class CalibrationPanel extends Panel {
 //        });
 
         if (isUsingPLogic_) {
-            final ASIPiezo piezo = model_.devices().device("ImagingFocus");
-            final ASIScanner scanner = model_.devices().device("IllumSlice");
-
             btnUpdate_.registerListener(() -> {
-                if (scanner.isBeamOn()) {
-                    final double rate = model_.acquisitions().settingsBuilder().build()
-                            .sliceCalibration().slope();
-                    final double piezoPosition = piezo.getPosition();
-                    final double scannerPosition = scanner.getPosition().y;
-                    double channelOffset = 0.0;
-                    // FIXME: update channelOffset
-                    // was: channelOffset = ASIdiSPIM.getFrame().getAcquisitionPanel().getChannelOffset();
-                    final double newOffset = piezoPosition - rate * scannerPosition - channelOffset;
+                try {
+                    final double newOffset = ImagingCenter.updateFromCurrentPosition(model_);
                     txtOffset_.setText(String.format(Locale.ROOT, "%.3f", newOffset));
                     lblOffsetValue_.setText(String.format("%.3f μm", newOffset));
                     panel_.setImagingCenterValue(newOffset);
-                    model_.acquisitions().settingsBuilder()
-                          .sheetCalibrationBuilder().imagingCenter(newOffset);
-                    model_.acquisitions().settingsBuilder()
-                          .sliceCalibrationBuilder().offset(newOffset);
-                    model_.studio().logs().logMessage("updated offset for view " + pathNum_ + "; new value is " +
-                            newOffset + " (with channel offset of " + channelOffset + ")");
-                } else {
+                } catch (ImagingCenter.SheetOff e) {
                     final String name = (model_.devices().adapter().geometry() == GeometryType.SCAPE)
                             ? "sheet" : "beam";
                     model_.studio().logs().showError(
                             "The " + name + " must be enabled to update the offset.", btnUpdate_);
+                } catch (Exception e) {
+                    model_.studio().logs().showError(e, "The offset was not updated.");
                 }
             });
         }
