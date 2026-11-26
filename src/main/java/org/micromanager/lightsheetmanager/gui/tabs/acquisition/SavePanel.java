@@ -109,7 +109,6 @@ public class SavePanel extends Panel implements SettingsListener {
         txtSaveDirectory_ = new TextField();
         txtSaveDirectory_.setEditable(false);
         txtSaveDirectory_.setColumns(18);
-        txtSaveDirectory_.setForeground(Color.WHITE);
         txtSaveDirectory_.setText(acqSettings.saveDirectory());
 
         txtSaveFileName_ = new TextField();
