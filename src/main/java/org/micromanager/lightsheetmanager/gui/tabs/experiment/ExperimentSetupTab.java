@@ -170,24 +170,26 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
         btnTestVolume_.setToolTipText("Acquire one volume with these settings, without saving "
                 + "it, flipped as set on the Cameras tab.");
         btnStop_.setToolTipText("Stop the acquisition or the Test autofocus in progress.");
-        // two rows: running, then looking
+        // one row under the columns; Live camera and Send sit beside Durations, where there is room
         pnlButtons.add(btnStart_, "");
         pnlButtons.add(btnTestVolume_, "");
         pnlButtons.add(btnStop_, "");
+        pnlButtons.add(btnSnap_, "gapleft 20");
+        pnlButtons.add(btnLive_, "");
+        final Panel pnlSide = new Panel();
+        pnlSide.setMigLayout("insets 0", "[]", "[]5[]");
         final Button btnSend = new Button("Send to scapecontrol", 160, 30);
         btnSend.setToolTipText("Save these settings, the autofocus setup included, to "
                 + "Micro-Manager's profile, where scapecontrol's import_setup and autofocus "
                 + "read them. Also done when LSM closes.");
         btnSend.registerListener(this::sendToScapecontrol);
-        pnlButtons.add(btnSend, "gapleft 20, wrap");
-        pnlButtons.add(btnSnap_, "span 4, split 4, center");
-        pnlButtons.add(btnLive_, "");
         final ComboBox<String> cmbLiveCamera = pnlDevices_.liveCameraControl();
         if (cmbLiveCamera != null) {
             cmbLiveCamera.setToolTipText("Switch the camera Live shows; Live keeps running.");
-            pnlButtons.add(new JLabel("Live camera:"), "gapleft 20");
-            pnlButtons.add(cmbLiveCamera, "");
+            pnlSide.add(new JLabel("Live camera:"), "wrap");
+            pnlSide.add(cmbLiveCamera, "wrap");
         }
+        pnlSide.add(btnSend, "gaptop 5");
 
         pnlPiezo_ = new PiezoFocusPanel(model_, busy -> {
             busy_ = busy;
@@ -200,7 +202,8 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
         tabsRight.addTab("Devices", scrDevices);
         tabsRight.addTab("Piezo / Autofocus", pnlPiezo_);
         pnlRight.add(tabsRight, "w 360!, h 400!, wrap");
-        pnlRight.add(new DurationPanel(model_), "growx");
+        pnlRight.add(new DurationPanel(model_), "split 2, aligny top");
+        pnlRight.add(pnlSide, "gapleft 10, aligny top");
 
         add(pnlLeft_, "aligny top");
         add(pnlCenter_, "aligny top");

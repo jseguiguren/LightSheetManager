@@ -1,9 +1,12 @@
 package org.micromanager.lightsheetmanager.gui.tabs.experiment;
 
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.function.Consumer;
 import javax.swing.JLabel;
@@ -124,8 +127,9 @@ public class PiezoFocusPanel extends Panel {
         add(cmbChannel_, "wrap");
         add(new JLabel("Exposure [ms]:"), "");
         add(spnExposure_, "wrap");
-        add(btnTest_, "span 2, split 3");
-        add(btnGoToFocus_, "");
+        // two rows: the three in one were wider than the sub-tab
+        add(btnTest_, "span 2, wrap");
+        add(btnGoToFocus_, "span 2, split 2");
         add(btnUpdateOffset, "wrap");
         add(lblResult_, "span 2, w 320!");
 
@@ -177,7 +181,7 @@ public class PiezoFocusPanel extends Panel {
         final FocusSetup setup = model_.pluginSettings().focusSetup();
         lblReference_.setText(setup.hasReference()
                 ? String.format("%.3f µm (set %s)", setup.referenceImagingCenterUm(),
-                        setup.referenceSetAt())
+                        shortTime(setup.referenceSetAt()))
                 : "not set");
         // no serial traffic while LSM runs or the test drives the piezo
         if (testing_ || model_.acquisitions().isRunning() || !isShowing()) {
@@ -263,6 +267,16 @@ public class PiezoFocusPanel extends Panel {
             });
         }, "Go to focus");
         mover.start();
+    }
+
+    /** "26 Nov 15:06", local time: the stored UTC instant ran out of the panel. */
+    private static String shortTime(final String instant) {
+        try {
+            return DateTimeFormatter.ofPattern("d MMM HH:mm", Locale.ROOT)
+                    .withZone(ZoneId.systemDefault()).format(Instant.parse(instant));
+        } catch (RuntimeException e) {
+            return instant;
+        }
     }
 
     private void setReference() {
