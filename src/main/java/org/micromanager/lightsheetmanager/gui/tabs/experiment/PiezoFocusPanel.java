@@ -40,7 +40,6 @@ public class PiezoFocusPanel extends Panel {
     private final Consumer<Boolean> busy_;
     private final JLabel lblPiezo_ = new JLabel("-");
     private final JLabel lblReference_ = new JLabel("-");
-    private final JLabel lblFromReference_ = new JLabel("-");
     private final JLabel lblResult_ = new JLabel(" ");
     private final Spinner spnRange_;
     private final CheckBox cbxExtended_;
@@ -94,15 +93,15 @@ public class PiezoFocusPanel extends Panel {
         btnTest_ = new Button("Test autofocus", 120, 26);
         btnTest_.setToolTipText("Search as scapecontrol will and show the correction; the piezo "
                 + "goes back, nothing is saved or changed.");
-        btnGoToFocus_ = new Button("Go to focus", 100, 26);
+        btnGoToFocus_ = new Button("Go to new focus", 125, 26);
         btnGoToFocus_.setToolTipText("Move the piezo to the focus the last test found, to look at "
                 + "it in Live. The reference stays as it is, and an acquisition still starts "
                 + "from the Imaging Center.");
         btnGoToFocus_.setEnabled(false);
-        // the end of test -> go to focus -> update offset; the same as Set reference
+        // the end of test -> go to new focus -> update offset; the same as Set reference
         final Button btnUpdateOffset = new Button("Update offset", 110, 26);
         btnUpdateOffset.setToolTipText("Make the piezo's position the new reference, as Update "
-                + "Offset does: after Go to focus, the focus found becomes the reference. The "
+                + "Offset does: after Go to new focus, the focus found becomes the reference. The "
                 + "sheet must be on.");
         btnUpdateOffset.registerListener(this::setReference);
 
@@ -110,8 +109,6 @@ public class PiezoFocusPanel extends Panel {
         add(lblPiezo_, "wrap");
         add(new JLabel("Reference:"), "");
         add(lblReference_, "wrap");
-        add(new JLabel("From reference:"), "");
-        add(lblFromReference_, "wrap");
         add(btnSetReference, "span 2, wrap");
         add(new JLabel("Search ± [µm]:"), "");
         add(spnRange_, "split 2");
@@ -199,14 +196,14 @@ public class PiezoFocusPanel extends Panel {
             lblPiezo_.setText("cannot read");
             return;
         }
-        lblPiezo_.setText(String.format("%.3f µm", z));
+        // one row with the distance from the reference: a row less, so the result fits the tab
         if (setup.hasReference()) {
             final double d = z - setup.referenceImagingCenterUm();
             final boolean outside = Math.abs(d) > setup.rangeUm();
-            lblFromReference_.setText(String.format("%+.3f µm%s", d,
-                    outside ? " (outside ± " + setup.rangeUm() + ")" : ""));
+            lblPiezo_.setText(String.format("%.3f µm (%+.3f%s)", z, d,
+                    outside ? ", outside ± " + setup.rangeUm() : " from reference"));
         } else {
-            lblFromReference_.setText("-");
+            lblPiezo_.setText(String.format("%.3f µm", z));
         }
     }
 
@@ -265,7 +262,7 @@ public class PiezoFocusPanel extends Panel {
                 busy_.accept(false);
                 showPositions();
             });
-        }, "Go to focus");
+        }, "Go to new focus");
         mover.start();
     }
 
