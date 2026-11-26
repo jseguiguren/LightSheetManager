@@ -35,6 +35,8 @@ Upstream: `candidate` (not proposed yet), a pull request link with its state, or
 - `.github/workflows/test.yml` downloads `MMJ_.jar` from a pinned Micro-Manager nightly
   (`MM_NIGHTLY`) and checks its SHA-256 (`MMJ_SHA256`). After the rig moves to a new nightly,
   update both lines together. Upstream builds against its own copy of the jar.
+- The same workflow keeps the built plugin jar as a run artifact (30 days), named for the
+  commit: the PR's Checks page, the run, Artifacts.
 - `.github/workflows/release_jar.yml` comes from upstream unchanged and runs on a push to `main`
   that touches `pom.xml`; it would tag and release from this fork too.
 

@@ -42,3 +42,13 @@ jobs:
 
       - name: Compile and test
         run: mvn -B package
+
+      # Fork only: the built plugin, to download from the run's page and drop into mmplugins.
+      # Named for the commit, so a jar on the rig says which code it is.
+      - name: Keep the plugin jar
+        uses: actions/upload-artifact@v7
+        with:
+          name: LightSheetManager-${{ github.event.pull_request.head.sha }}
+          path: target/LightSheetManager-*.jar
+          if-no-files-found: error
+          retention-days: 30
