@@ -5,7 +5,9 @@ import ij.gui.Roi;
 import java.awt.Rectangle;
 import java.util.Collection;
 import java.util.Objects;
+import java.util.function.Consumer;
 import javax.swing.JLabel;
+import javax.swing.SwingUtilities;
 import org.micromanager.Studio;
 import org.micromanager.display.DisplayWindow;
 import org.micromanager.lightsheetmanager.LightSheetManager;
@@ -26,6 +28,7 @@ public class CropPanel extends Panel {
     private static final String UM = "µm";
 
     private final LightSheetManager model_;
+    private final Consumer<Boolean> busy_;
     private final JLabel lblFrame_ = new JLabel();
     private final JLabel lblNow_ = new JLabel();
     private final JLabel lblResult_ = new JLabel(" ");
@@ -33,9 +36,14 @@ public class CropPanel extends Panel {
     private final Spinner spnWidth_;
     private final Spinner spnHeight_;
 
-    public CropPanel(final LightSheetManager model) {
+    /**
+     * @param busy told true while a crop is being applied and false after, so the tab locks its
+     *     other controls meanwhile
+     */
+    public CropPanel(final LightSheetManager model, final Consumer<Boolean> busy) {
         super();
         model_ = Objects.requireNonNull(model);
+        busy_ = Objects.requireNonNull(busy);
         cmbUnit_ = new ComboBox<>(new String[] {PX, UM}, PX, 60, 22);
         spnWidth_ = Spinner.createDoubleSpinner(512.0, 0.0, 100000.0, 1.0, 5);
         spnHeight_ = Spinner.createDoubleSpinner(512.0, 0.0, 100000.0, 1.0, 5);
@@ -45,9 +53,9 @@ public class CropPanel extends Panel {
         btnApply.setToolTipText("Crop every active imaging camera to this size, centred, so "
                 + "both views frame the same region even with one camera mirrored.");
         final Button btnFull = new Button("Full frame", 90, 26);
-        final Button btnFromLive = new Button("From Live rectangle", 150, 26);
-        btnFromLive.setToolTipText("Take the size of the rectangle drawn on the Live window "
-                + "(ImageJ rectangle tool); Apply centred then crops to it, centred.");
+        final Button btnFromLive = new Button("Apply from Live rectangle", 190, 26);
+        btnFromLive.setToolTipText("Crop to the size of the rectangle drawn on the Live window "
+                + "(ImageJ rectangle tool), centred.");
 
         // six rows: the Cameras / Crop tabs take the taller of the two, and the column is full
         add(lblFrame_, "span, wrap");
@@ -141,8 +149,7 @@ public class CropPanel extends Panel {
         cmbUnit_.setSelected(PX);
         spnWidth_.setDouble(r.width);
         spnHeight_.setDouble(r.height);
-        lblResult_.setText(String.format("From Live: %d x %d px; Apply centred to crop.",
-                r.width, r.height));
+        apply(false); // its size, centred
     }
 
     private void apply(final boolean fullFrame) {
@@ -177,30 +184,42 @@ public class CropPanel extends Panel {
             return;
         }
         final Studio studio = model_.studio();
-        // as Micro-Manager's Set ROI does for several cameras (MMROIManager.setROI)
-        studio.live().setSuspended(true);
-        final StringBuilder failed = new StringBuilder();
-        try {
-            for (final CameraBase camera : cameras) {
-                try {
-                    studio.core().setROI(camera.getDeviceName(), crop.x, crop.y,
-                            crop.width, crop.height);
-                } catch (Exception e) {
-                    failed.append(camera.getDeviceName()).append(": ").append(e.getMessage())
-                            .append(". ");
+        lblResult_.setText("Applying crop...");
+        busy_.accept(true);
+        // off the EDT: stopping Live, reconfiguring each camera (PVCAM rebuilds its acquisition
+        // setup for a new ROI) and starting Live again take a while, and the window stays usable
+        final Thread worker = new Thread(() -> {
+            final StringBuilder failed = new StringBuilder();
+            // as Micro-Manager's Set ROI does for several cameras (MMROIManager.setROI)
+            studio.live().setSuspended(true);
+            try {
+                for (final CameraBase camera : cameras) {
+                    try {
+                        studio.core().setROI(camera.getDeviceName(), crop.x, crop.y,
+                                crop.width, crop.height);
+                    } catch (Exception e) {
+                        failed.append(camera.getDeviceName()).append(": ")
+                                .append(e.getMessage()).append(". ");
+                    }
                 }
+            } finally {
+                studio.live().setSuspended(false);
             }
-        } finally {
-            studio.live().setSuspended(false);
-            studio.app().refreshGUI(); // Micro-Manager's window reads the new ROI
-        }
-        model_.acquisitions().updateDurationLabels(); // the slice timing depends on the ROI
-        refresh();
-        final double um = pixelSizeUm();
-        lblResult_.setText(failed.length() > 0
-                ? "Not set on " + failed
-                : String.format("Cropped to %d x %d px%s, centred.", crop.width, crop.height,
-                        um > 0 ? String.format(" (%.1f x %.1f µm)", crop.width * um,
-                                crop.height * um) : ""));
+            SwingUtilities.invokeLater(() -> {
+                // from the cache: refreshGUI re-reads every device over its serial link, which
+                // took seconds; the ROI is not cached, so Micro-Manager's window shows it anyway
+                studio.app().refreshGUIFromCache();
+                model_.acquisitions().updateDurationLabels(); // the slice timing depends on it
+                refresh();
+                final double um = pixelSizeUm();
+                lblResult_.setText(failed.length() > 0
+                        ? "Not set on " + failed
+                        : String.format("Cropped to %d x %d px%s, centred.", crop.width,
+                                crop.height, um > 0 ? String.format(" (%.1f x %.1f µm)",
+                                        crop.width * um, crop.height * um) : ""));
+                busy_.accept(false);
+            });
+        }, "Experiment Setup crop");
+        worker.start();
     }
 }

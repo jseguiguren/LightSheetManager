@@ -122,7 +122,10 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
         // the cameras, and their crop: one tab each, they share the column's space
         final JTabbedPane tabsCameras = new JTabbedPane();
         tabsCameras.addTab("Cameras", new CameraPanel(model_));
-        pnlCrop_ = new CropPanel(model_);
+        pnlCrop_ = new CropPanel(model_, busy -> {
+            busy_ = busy; // a crop being applied: lock as for a run
+            showRunning(model_.acquisitions().isRunning() || busy);
+        });
         tabsCameras.addTab("Crop", pnlCrop_);
         tabsCameras.addChangeListener(e -> pnlCrop_.refresh());
         pnlLeft_.add(tabsCameras, "growx, wrap");
