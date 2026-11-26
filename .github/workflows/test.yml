@@ -29,6 +29,9 @@ jobs:
         with:
           java-version: 11
           distribution: 'zulu'
+          # Maven's downloads from run to run: without it every run fetches every plugin from
+          # Maven Central, which then answers 429 Too Many Requests now and then (run 45841240962)
+          cache: 'maven'
 
       - name: Fetch MMJ_.jar from the Micro-Manager nightly
         run: |
