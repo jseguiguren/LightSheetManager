@@ -153,6 +153,12 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
         pnlButtons.add(btnLive_, "");
         pnlButtons.add(btnTestVolume_, "");
         pnlButtons.add(btnStop_, "");
+        final Button btnSend = new Button("Send to scapecontrol", 160, 30);
+        btnSend.setToolTipText("Save these settings, the autofocus setup included, to "
+                + "Micro-Manager's profile, where scapecontrol's import_setup and autofocus "
+                + "read them. Also done when LSM closes.");
+        btnSend.registerListener(this::sendToScapecontrol);
+        pnlButtons.add(btnSend, "gapleft 20");
         final ComboBox<String> cmbLiveCamera = pnlDevices_.liveCameraControl();
         if (cmbLiveCamera != null) {
             cmbLiveCamera.setToolTipText("Switch the camera Live shows; Live keeps running.");
@@ -306,6 +312,22 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
                 lockEnabled((Container) c);
             }
         }
+    }
+
+    /**
+     * Saves the settings to Micro-Manager's profile (UserSettings.save). scapecontrol talks to its
+     * own LightSheetManager instance, which reads the profile (UserSettings.load) and not this
+     * window, so this is how what the window shows reaches it.
+     */
+    private void sendToScapecontrol() {
+        if (model_.acquisitions().isRunning()) {
+            model_.studio().logs().showError("Not sent during an acquisition.");
+            return;
+        }
+        model_.userSettings().save();
+        model_.studio().logs().logMessage("Experiment Setup: settings sent to scapecontrol.");
+        model_.studio().alerts().postAlert("Light Sheet Manager", ExperimentSetupTab.class,
+                "Settings sent to scapecontrol.");
     }
 
     /** Shows the acquisition settings as they are, undoing an edit that was refused. */

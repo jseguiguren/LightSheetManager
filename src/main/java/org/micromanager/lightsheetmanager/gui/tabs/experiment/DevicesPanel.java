@@ -7,8 +7,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -72,15 +70,6 @@ public class DevicesPanel extends Panel {
     public void removeNotify() {
         writer_.shutdown();
         super.removeNotify();
-    }
-
-    /** The unit in a property's name ("LED Intensity(%)": "%"); "V" for a laser's Voltage. */
-    static String unitOf(final String property) {
-        final Matcher m = Pattern.compile("\\(([^)]+)\\)\\s*$").matcher(property);
-        if (m.find()) {
-            return m.group(1);
-        }
-        return "Voltage".equals(property) ? "V" : "";
     }
 
     /**
@@ -188,8 +177,6 @@ public class DevicesPanel extends Panel {
                 core_.getPropertyLowerLimit(device, property),
                 core_.getPropertyUpperLimit(device, property));
         final Spinner spn = Spinner.createDoubleSpinner(0.0, 0.0, 100.0, 1.0, 5);
-        final JLabel lblValue = new JLabel();
-        final String unit = unitOf(property);
         final boolean[] refreshing = {false};
         spn.setToolTipText(group + ": " + device + " " + property + ", in % of its range "
                 + format(scale.lower()) + " to " + format(scale.upper()));
@@ -199,8 +186,6 @@ public class DevicesPanel extends Panel {
                 final double value = Double.parseDouble(
                         core_.getPropertyFromCache(device, property));
                 spn.setDouble(scale.toPercent(value));
-                lblValue.setText("% (" + format(value) + " " + unit + " of "
-                        + format(scale.upper()) + " " + unit + ")");
             } catch (Exception e) {
                 model_.studio().logs().logError(e);
             }
@@ -218,7 +203,7 @@ public class DevicesPanel extends Panel {
         });
         refreshers_.add(show);
         show.run();
-        addRow(group, spn, lblValue);
+        addRow(group, spn, new JLabel("%"));
     }
 
     private void addText(final String group, final String device, final String property)

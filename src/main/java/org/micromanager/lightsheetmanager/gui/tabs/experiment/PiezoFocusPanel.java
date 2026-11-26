@@ -249,6 +249,8 @@ public class PiezoFocusPanel extends Panel {
             model_.pluginSettings().focusSetup().setReference(center, offset,
                     Instant.now().truncatedTo(ChronoUnit.SECONDS).toString());
             forgetFocus(); // found from the old reference
+            // scapecontrol reads the reference from the profile, not from this window
+            model_.userSettings().save();
             model_.userSettings().notifyListeners(model_.acquisitions().settingsBuilder().build());
             showPositions();
         } catch (ImagingCenter.SheetOff e) {

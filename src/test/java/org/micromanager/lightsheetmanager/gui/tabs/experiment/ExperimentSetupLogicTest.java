@@ -158,11 +158,4 @@ public class ExperimentSetupLogicTest {
         VolumeRange.slicesFor(10.0, 0.0);
     }
 
-    @Test
-    public void theUnitComesFromTheProperty() {
-        assertEquals("V", DevicesPanel.unitOf("Voltage")); // NIMultiAnalog lasers
-        assertEquals("%", DevicesPanel.unitOf("LED Intensity(%)"));
-        assertEquals("mm", DevicesPanel.unitOf("LowerLim(mm)"));
-        assertEquals("", DevicesPanel.unitOf("OutputChannel"));
-    }
 }
