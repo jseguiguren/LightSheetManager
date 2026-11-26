@@ -40,6 +40,7 @@ public class PiezoFocusPanel extends Panel {
     private final Consumer<Boolean> busy_;
     private final JLabel lblPiezo_ = new JLabel("-");
     private final JLabel lblReference_ = new JLabel("-");
+    private final JLabel lblFromReference_ = new JLabel("-");
     private final JLabel lblResult_ = new JLabel(" ");
     private final Spinner spnRange_;
     private final CheckBox cbxExtended_;
@@ -109,6 +110,8 @@ public class PiezoFocusPanel extends Panel {
         add(lblPiezo_, "wrap");
         add(new JLabel("Reference:"), "");
         add(lblReference_, "wrap");
+        add(new JLabel("From reference:"), "");
+        add(lblFromReference_, "wrap");
         add(btnSetReference, "span 2, wrap");
         add(new JLabel("Search ± [µm]:"), "");
         add(spnRange_, "split 2");
@@ -196,14 +199,14 @@ public class PiezoFocusPanel extends Panel {
             lblPiezo_.setText("cannot read");
             return;
         }
-        // one row with the distance from the reference: a row less, so the result fits the tab
+        lblPiezo_.setText(String.format("%.3f µm", z));
         if (setup.hasReference()) {
             final double d = z - setup.referenceImagingCenterUm();
             final boolean outside = Math.abs(d) > setup.rangeUm();
-            lblPiezo_.setText(String.format("%.3f µm (%+.3f%s)", z, d,
-                    outside ? ", outside ± " + setup.rangeUm() : " from reference"));
+            lblFromReference_.setText(String.format("%+.3f µm%s", d,
+                    outside ? " (outside ± " + setup.rangeUm() + ")" : ""));
         } else {
-            lblPiezo_.setText(String.format("%.3f µm", z));
+            lblFromReference_.setText("-");
         }
     }
 

@@ -201,7 +201,7 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
         // devices first: they are set up before the piezo and its autofocus
         tabsRight.addTab("Devices", scrDevices);
         tabsRight.addTab("Piezo / Autofocus", pnlPiezo_);
-        pnlRight.add(tabsRight, "w 360!, h 400!, wrap");
+        pnlRight.add(tabsRight, "w 360!, h 430!, wrap");
         pnlRight.add(new DurationPanel(model_), "split 2, aligny top");
         pnlRight.add(pnlSide, "gapleft 10, aligny top");
 

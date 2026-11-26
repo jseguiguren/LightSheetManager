@@ -107,7 +107,7 @@ public class LightSheetManagerFrame extends JFrame {
 
         // main control area
         final int width = 920;
-        final int height = 680;
+        final int height = 710; // fork: 30 px more, for the Experiment Setup tab's autofocus panel
         tabPanel_ = new TabPanel(model_, this, width, height);
 
         final JLabel lblTitle = new JLabel(LightSheetManagerPlugin.menuName);
