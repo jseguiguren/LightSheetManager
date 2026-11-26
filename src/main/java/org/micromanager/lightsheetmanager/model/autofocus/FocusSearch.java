@@ -17,6 +17,8 @@ public final class FocusSearch {
 
     /** µm: positions this close to a window edge count as on it. */
     private static final double EPS = 1e-9;
+    /** µm either side of the reference, unless Extended range is ticked; as in scapecontrol. */
+    public static final double MAX_RANGE_UM = 3.0;
     /** The most frames one sweep may take, as in scapecontrol. */
     public static final int MAX_FRAMES_PER_SWEEP = 101;
     /** px: the central square measured. */
@@ -34,8 +36,21 @@ public final class FocusSearch {
 
         public Settings(final double rangeUm, final double coarseUm, final double fineUm,
                         final double minContrast) {
+            this(rangeUm, coarseUm, fineUm, minContrast, false);
+        }
+
+        /**
+         * @param extendedRange the window's Extended range: a range beyond
+         *     {@link #MAX_RANGE_UM}, as scapecontrol's FocusSettings allows it
+         */
+        public Settings(final double rangeUm, final double coarseUm, final double fineUm,
+                        final double minContrast, final boolean extendedRange) {
             if (!(rangeUm > 0) || !(coarseUm > 0) || !(fineUm > 0)) {
                 throw new IllegalArgumentException("the range and both steps must be > 0");
+            }
+            if (rangeUm > MAX_RANGE_UM + EPS && !extendedRange) {
+                throw new IllegalArgumentException("a range beyond ±" + MAX_RANGE_UM
+                        + " µm needs Extended range");
             }
             if (fineUm >= coarseUm) {
                 throw new IllegalArgumentException("the fine step must be smaller than the coarse step");

@@ -32,7 +32,7 @@ public class FocusSetupTest {
     public void savedWithThePluginSettings() {
         final PluginSettings settings = new PluginSettings();
         settings.focusSetup().setReference(12.5, 12.25, "2026-11-26T10:00:00Z");
-        settings.focusSetup().setSearch(0.8, 0.2, 0.04, "dcts");
+        settings.focusSetup().setSearch(0.8, 0.2, 0.04, "dcts", false);
         settings.focusSetup().setImaging("Kinetix22-2", "488+561", 15.0);
         final FocusSetup back = PluginSettings.fromJson(settings.toJson()).focusSetup();
         assertEquals(12.5, back.referenceImagingCenterUm(), 0.0);
@@ -51,7 +51,7 @@ public class FocusSetupTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void searchSettingsAreChecked() {
-        new FocusSetup().setSearch(1.0, 0.05, 0.25, "tenengrad"); // fine larger than coarse
+        new FocusSetup().setSearch(1.0, 0.05, 0.25, "tenengrad", false); // fine larger than coarse
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -69,5 +69,26 @@ public class FocusSetupTest {
         final FocusSearch.Settings s = new FocusSetup().searchSettings();
         assertEquals(1.0, s.rangeUm, 0.0);
         assertEquals(0.02, s.minContrast, 0.0);
+    }
+
+    @Test
+    public void theRangeIsThreeMicronsAtMostByDefault() {
+        final FocusSetup f = new FocusSetup();
+        assertFalse(f.extendedRange());
+        f.setSearch(3.0, 0.25, 0.05, "tenengrad", false); // the limit itself is allowed
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void beyondThreeMicronsNeedsTheExtendedRange() {
+        new FocusSetup().setSearch(3.5, 0.25, 0.05, "tenengrad", false);
+    }
+
+    @Test
+    public void anExtendedRangeIsSavedForScapecontrol() {
+        final PluginSettings settings = new PluginSettings();
+        settings.focusSetup().setSearch(5.0, 0.25, 0.05, "tenengrad", true);
+        final FocusSetup back = PluginSettings.fromJson(settings.toJson()).focusSetup();
+        assertTrue(back.extendedRange());
+        assertEquals(5.0, back.searchSettings().rangeUm, 0.0);
     }
 }

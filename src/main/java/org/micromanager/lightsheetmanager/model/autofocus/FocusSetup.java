@@ -22,6 +22,8 @@ public class FocusSetup {
     private double coarseUm = 0.25;
     private double fineUm = 0.05;
     private String measure = "tenengrad";
+    // the window's Extended range: off whenever LSM opens (the panel resets it)
+    private boolean extendedRange = false;
 
     // "" means as Micro-Manager has it now
     private String camera = "";
@@ -56,8 +58,9 @@ public class FocusSetup {
 
     /** @throws IllegalArgumentException as {@link FocusSearch.Settings} does, or for a measure */
     public void setSearch(final double rangeUm, final double coarseUm, final double fineUm,
-                          final String measure) {
-        new FocusSearch.Settings(rangeUm, coarseUm, fineUm, 0.02); // checks the values
+                          final String measure, final boolean extendedRange) {
+        // checks the values
+        new FocusSearch.Settings(rangeUm, coarseUm, fineUm, 0.02, extendedRange);
         if (!MEASURES.contains(measure)) {
             throw new IllegalArgumentException("measure must be one of " + MEASURES);
         }
@@ -65,6 +68,11 @@ public class FocusSetup {
         this.coarseUm = coarseUm;
         this.fineUm = fineUm;
         this.measure = measure;
+        this.extendedRange = extendedRange;
+    }
+
+    public boolean extendedRange() {
+        return extendedRange;
     }
 
     public void setImaging(final String camera, final String channelPreset,
@@ -106,6 +114,6 @@ public class FocusSetup {
     }
 
     public FocusSearch.Settings searchSettings() {
-        return new FocusSearch.Settings(rangeUm, coarseUm, fineUm, 0.02);
+        return new FocusSearch.Settings(rangeUm, coarseUm, fineUm, 0.02, extendedRange);
     }
 }

@@ -7,10 +7,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 import javax.swing.JLabel;
+import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import org.micromanager.lightsheetmanager.LightSheetManager;
 import org.micromanager.lightsheetmanager.gui.components.Button;
+import org.micromanager.lightsheetmanager.gui.components.CheckBox;
 import org.micromanager.lightsheetmanager.gui.components.ComboBox;
 import org.micromanager.lightsheetmanager.gui.components.Panel;
 import org.micromanager.lightsheetmanager.gui.components.Spinner;
@@ -38,6 +40,7 @@ public class PiezoFocusPanel extends Panel {
     private final JLabel lblFromReference_ = new JLabel("-");
     private final JLabel lblResult_ = new JLabel(" ");
     private final Spinner spnRange_;
+    private final CheckBox cbxExtended_;
     private final Spinner spnCoarse_;
     private final Spinner spnFine_;
     private final ComboBox<String> cmbMeasure_;
@@ -67,10 +70,17 @@ public class PiezoFocusPanel extends Panel {
         btnSetReference.setToolTipText("What the Setup Path tab's Update Offset does: the imaging "
                 + "center and the piezo offset from the current piezo and slice positions. Kept "
                 + "as the autofocus reference, which autofocus never moves. The sheet must be on.");
-        spnRange_ = Spinner.createDoubleSpinner(setup.rangeUm(), 0.05, 20.0, 0.05, 5);
+        // the limit is the default whenever LSM opens: Extended range off, a saved range clamped
+        spnRange_ = Spinner.createDoubleSpinner(
+                Math.min(setup.rangeUm(), FocusSearch.MAX_RANGE_UM), 0.05,
+                FocusSearch.MAX_RANGE_UM, 0.05, 5);
+        cbxExtended_ = new CheckBox("Extended range", false);
+        cbxExtended_.setToolTipText("Allow a search beyond ± " + FocusSearch.MAX_RANGE_UM
+                + " µm; off whenever Light Sheet Manager opens.");
         spnCoarse_ = Spinner.createDoubleSpinner(setup.coarseUm(), 0.01, 5.0, 0.05, 5);
         spnFine_ = Spinner.createDoubleSpinner(setup.fineUm(), 0.005, 1.0, 0.01, 5);
-        spnRange_.setToolTipText("Autofocus searches the reference ± this, never further.");
+        spnRange_.setToolTipText("Autofocus searches the reference ± this, never further; at "
+                + "most " + FocusSearch.MAX_RANGE_UM + " µm without Extended range.");
         cmbMeasure_ = new ComboBox<>(FocusSetup.MEASURES.toArray(new String[0]),
                 setup.measure(), 100, 22);
         cmbMeasure_.setToolTipText("tenengrad: edge strength, for any sample; "
@@ -101,7 +111,8 @@ public class PiezoFocusPanel extends Panel {
         add(lblFromReference_, "wrap");
         add(btnSetReference, "span 2, wrap");
         add(new JLabel("Search ± [µm]:"), "");
-        add(spnRange_, "wrap");
+        add(spnRange_, "split 2");
+        add(cbxExtended_, "wrap");
         add(new JLabel("Coarse / fine step [µm]:"), "");
         add(spnCoarse_, "split 2");
         add(spnFine_, "wrap");
@@ -121,6 +132,14 @@ public class PiezoFocusPanel extends Panel {
         btnSetReference.registerListener(this::setReference);
         final Runnable saveSearch = this::saveSearch;
         spnRange_.registerListener(saveSearch);
+        cbxExtended_.registerListener(() -> {
+            final SpinnerNumberModel range = (SpinnerNumberModel) spnRange_.getModel();
+            range.setMaximum(cbxExtended_.isSelected() ? 20.0 : FocusSearch.MAX_RANGE_UM);
+            if (spnRange_.getDouble() > FocusSearch.MAX_RANGE_UM && !cbxExtended_.isSelected()) {
+                spnRange_.setDouble(FocusSearch.MAX_RANGE_UM); // its listener saves
+            }
+            saveSearch();
+        });
         spnCoarse_.registerListener(saveSearch);
         spnFine_.registerListener(saveSearch);
         cmbMeasure_.registerListener(saveSearch);
@@ -136,6 +155,7 @@ public class PiezoFocusPanel extends Panel {
         cmbChannel_.registerListener(saveImaging);
         spnExposure_.registerListener(saveImaging);
         btnTest_.registerListener(this::runTest);
+        saveSearch(); // the saved setup and scapecontrol see the limit as the default too
         btnGoToFocus_.registerListener(this::goToFocus);
         poll_ = new Timer(500, e -> showPositions());
         showPositions();
@@ -271,7 +291,8 @@ public class PiezoFocusPanel extends Panel {
     private void saveSearch() {
         try {
             model_.pluginSettings().focusSetup().setSearch(spnRange_.getDouble(),
-                    spnCoarse_.getDouble(), spnFine_.getDouble(), cmbMeasure_.getSelected());
+                    spnCoarse_.getDouble(), spnFine_.getDouble(), cmbMeasure_.getSelected(),
+                    cbxExtended_.isSelected());
             lblResult_.setText(" ");
         } catch (IllegalArgumentException e) {
             showResult("Not saved: " + e.getMessage());
