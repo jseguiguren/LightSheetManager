@@ -328,6 +328,7 @@ public class PiezoFocusPanel extends Panel {
         final Thread worker = new Thread(() -> {
             String text;
             Double focus = null;
+            FocusSearch.Result searched = null;
             final double reference = setup.referenceImagingCenterUm();
             try {
                 final FocusSearch.Result r = TestAutofocus.run(model_, setup,
@@ -340,13 +341,19 @@ public class PiezoFocusPanel extends Panel {
                 if (r.ok) {
                     focus = reference + r.deltaUm;
                 }
+                searched = r;
             } catch (Exception e) {
                 text = "Not run: " + e.getMessage();
             }
             final String result = text;
             final Double found = focus;
+            final FocusSearch.Result plotted = searched;
             SwingUtilities.invokeLater(() -> {
                 showResult(result);
+                if (plotted != null) { // found or not: the curve says which way the focus lies
+                    FocusPlot.show(plotted, reference, found == null ? Double.NaN : found,
+                            setup.measure());
+                }
                 if (found != null) {
                     lastFocusUm_ = found;
                     lastReferenceUm_ = reference;

@@ -84,19 +84,24 @@ public final class FocusSearch {
         }
     }
 
-    /** {@code deltaUm} is NaN when the focus is not trusted; {@code reason} says why. */
+    /**
+     * {@code deltaUm} is NaN when the focus is not trusted; {@code reason} says why.
+     * {@code samples}: the coarse sweep's {@code coarseCount} first, then the fine sweep's.
+     */
     public static final class Result {
         public final boolean ok;
         public final double deltaUm;
         public final String reason;
         public final List<Sample> samples;
+        public final int coarseCount;
 
         Result(final boolean ok, final double deltaUm, final String reason,
-               final List<Sample> samples) {
+               final List<Sample> samples, final int coarseCount) {
             this.ok = ok;
             this.deltaUm = deltaUm;
             this.reason = reason;
             this.samples = Collections.unmodifiableList(samples);
+            this.coarseCount = coarseCount;
         }
     }
 
@@ -174,12 +179,14 @@ public final class FocusSearch {
         }
         if (best.score - low <= settings.minContrast * Math.abs(low) || best.score == low) {
             return new Result(false, Double.NaN,
-                    "no structure: the scores barely change across the window", samples);
+                    "no structure: the scores barely change across the window", samples,
+                    coarse.size());
         }
         if (best.positionUm <= coarse.get(0).positionUm + EPS
                 || best.positionUm >= coarse.get(coarse.size() - 1).positionUm - EPS) {
             return new Result(false, Double.NaN,
-                    "the best focus is on the edge of the window: it may lie outside", samples);
+                    "the best focus is on the edge of the window: it may lie outside", samples,
+                    coarse.size());
         }
 
         final double fineLo = Math.max(lo, best.positionUm - settings.coarseUm);
@@ -200,7 +207,7 @@ public final class FocusSearch {
                     fine.get(i - 1).score, fine.get(i).score, fine.get(i + 1).score);
         }
         z = Math.min(Math.max(z, lo), hi);
-        return new Result(true, z - referenceUm, "focus found", samples);
+        return new Result(true, z - referenceUm, "focus found", samples, coarse.size());
     }
 
     // ---- the measures, on a central crop of a row-major image

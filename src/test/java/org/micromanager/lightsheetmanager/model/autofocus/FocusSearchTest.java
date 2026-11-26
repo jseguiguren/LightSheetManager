@@ -108,4 +108,19 @@ public class FocusSearchTest {
             throw new AssertionError("moved before refusing");
         }, 50.0, FocusSearch.Settings.defaults(), new double[] {40.0, 45.0});
     }
+
+    /** The Test autofocus plot draws the two sweeps apart. */
+    @Test
+    public void theResultSaysWhichSamplesAreTheCoarseSweep() {
+        final FocusSearch.Result found = FocusSearch.find(z -> -(z - 50.3) * (z - 50.3), 50.0,
+                FocusSearch.Settings.defaults(), null);
+        assertEquals(9, found.coarseCount); // 49 to 51 in 0.25 µm steps
+        assertTrue(found.samples.size() > found.coarseCount);
+        for (int k = 1; k < found.coarseCount; k++) {
+            assertTrue(found.samples.get(k).positionUm > found.samples.get(k - 1).positionUm);
+        }
+        final FocusSearch.Result edge = FocusSearch.find(z -> z, 50.0,
+                FocusSearch.Settings.defaults(), null);
+        assertEquals(edge.samples.size(), edge.coarseCount); // no fine sweep
+    }
 }
