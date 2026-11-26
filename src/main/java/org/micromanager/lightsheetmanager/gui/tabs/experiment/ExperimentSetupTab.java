@@ -49,6 +49,7 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
     private CheckBox cbxUseMultiplePositions_;
     private PositionsPanel pnlPositions_;
     private DevicesPanel pnlDevices_;
+    private PiezoFocusPanel pnlPiezo_;
     private Panel pnlLeft_;
     private Panel pnlCenter_;
 
@@ -57,6 +58,8 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
     private Button btnTestVolume_;
     private Button btnStop_;
     private boolean running_;
+    // a Test autofocus drives the hardware without an LSM run: lock as for one
+    private boolean busy_;
     // the controls a run disabled, enabled again when it ends; the others stay as they were
     private final List<Component> lockedByRun_ = new ArrayList<>();
     // runs can also start from the Acquisition tab or from a script
@@ -70,7 +73,7 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
         createUserInterface();
         createEventHandlers();
         model_.userSettings().addChangeListener(this);
-        runPoll_ = new Timer(200, e -> showRunning(model_.acquisitions().isRunning()));
+        runPoll_ = new Timer(200, e -> showRunning(model_.acquisitions().isRunning() || busy_));
     }
 
     @Override
@@ -143,13 +146,19 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
         btnLive_.setToolTipText("Start or stop Live, flipped as set on the Cameras tab.");
         btnTestVolume_.setToolTipText("Acquire one volume with these settings, without saving "
                 + "it, flipped as set on the Cameras tab.");
-        btnStop_.setToolTipText("Stop the acquisition in progress.");
+        btnStop_.setToolTipText("Stop the acquisition or the Test autofocus in progress.");
         pnlButtons.add(btnSnap_, "");
         pnlButtons.add(btnLive_, "");
         pnlButtons.add(btnTestVolume_, "");
         pnlButtons.add(btnStop_, "");
 
-        pnlRight.add(scrDevices, "w 380!, h 470!, wrap");
+        pnlPiezo_ = new PiezoFocusPanel(model_, busy -> {
+            busy_ = busy;
+            frame_.setTabsEnabled(!busy); // no run from another tab during the test
+            showRunning(model_.acquisitions().isRunning() || busy);
+        });
+        pnlRight.add(pnlPiezo_, "growx, wrap");
+        pnlRight.add(scrDevices, "w 380!, h 220!, wrap");
         pnlRight.add(pnlButtons, "");
 
         add(pnlLeft_, "aligny top");
@@ -187,6 +196,9 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
                 !model_.studio().live().isLiveModeOn()));
         btnTestVolume_.registerListener(this::runTestVolume);
         btnStop_.registerListener(() -> {
+            if (busy_) {
+                pnlPiezo_.cancel(); // a Test autofocus: it puts everything back as it stops
+            }
             if (model_.acquisitions().isRunning()) {
                 model_.acquisitions().requestStop();
             }
@@ -249,7 +261,7 @@ public class ExperimentSetupTab extends Panel implements ListeningPanel, Setting
             }
             SwingUtilities.invokeLater(() -> {
                 frame_.setTabsEnabled(true);
-                showRunning(model_.acquisitions().isRunning());
+                showRunning(model_.acquisitions().isRunning() || busy_);
             });
         }, "Experiment Setup test volume");
         waiter.setDaemon(true);

@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.util.Objects;
 import org.micromanager.lightsheetmanager.liveview.LiveViewOrientation;
+import org.micromanager.lightsheetmanager.model.autofocus.FocusSetup;
 
 /**
  * Plugin settings that are not a part of the acquisition settings.
@@ -21,6 +22,9 @@ public class PluginSettings {
 
     // volatile: replaced from the EDT (Camera tab), read when the Live pipeline is updated
     private volatile LiveViewOrientation liveViewOrientation = LiveViewOrientation.none();
+
+    // the O3 autofocus reference and search (scapecontrol ADR-0037)
+    private FocusSetup focusSetup = new FocusSetup();
 
     public JoystickData joystickPanel() {
         return joystick;
@@ -53,6 +57,13 @@ public class PluginSettings {
 
     public void liveViewOrientation(final LiveViewOrientation orientation) {
         liveViewOrientation = Objects.requireNonNull(orientation);
+    }
+
+    public FocusSetup focusSetup() {
+        if (focusSetup == null) { // settings JSON that holds an explicit null
+            focusSetup = new FocusSetup();
+        }
+        return focusSetup;
     }
 
     public String toJson() {
