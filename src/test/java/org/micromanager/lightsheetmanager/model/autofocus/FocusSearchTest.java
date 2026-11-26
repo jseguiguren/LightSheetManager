@@ -87,6 +87,16 @@ public class FocusSearchTest {
         }
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void aCoarseSweepOfMoreThanAHundredAndOneFramesIsRefused() {
+        new FocusSearch.Settings(10.0, 0.05, 0.01, 0.02); // as scapecontrol's FocusSettings
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void aFineSweepOfMoreThanAHundredAndOneFramesIsRefused() {
+        new FocusSearch.Settings(1.0, 0.25, 0.001, 0.02);
+    }
+
     @Test(expected = FocusSearch.Refused.class)
     public void aScoreThatIsNotANumberStopsTheSearch() {
         FocusSearch.find(z -> Double.NaN, 50.0, FocusSearch.Settings.defaults(), null);

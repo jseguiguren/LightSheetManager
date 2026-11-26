@@ -17,6 +17,8 @@ public final class FocusSearch {
 
     /** µm: positions this close to a window edge count as on it. */
     private static final double EPS = 1e-9;
+    /** The most frames one sweep may take, as in scapecontrol. */
+    public static final int MAX_FRAMES_PER_SWEEP = 101;
     /** px: the central square measured. */
     public static final int CROP_PX = 256;
 
@@ -37,6 +39,12 @@ public final class FocusSearch {
             }
             if (fineUm >= coarseUm) {
                 throw new IllegalArgumentException("the fine step must be smaller than the coarse step");
+            }
+            // as scapecontrol's FocusSettings: a tiny step would make thousands of moves and snaps
+            if (2 * rangeUm / coarseUm + 1 > MAX_FRAMES_PER_SWEEP + EPS
+                    || 2 * coarseUm / fineUm + 1 > MAX_FRAMES_PER_SWEEP + EPS) {
+                throw new IllegalArgumentException("a sweep would take more than "
+                        + MAX_FRAMES_PER_SWEEP + " frames: use a larger step");
             }
             this.rangeUm = rangeUm;
             this.coarseUm = coarseUm;
