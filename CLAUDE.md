@@ -8,14 +8,16 @@ of the same rig) may be attached for reference. Its `docs/HARDWARE.md`, `docs/DE
 ## 1. Rig and stack
 - Main rig: Windows 11, Micro-Manager 2.0.3 nightly, MMCore 12.5.0 (device interface 75), ASI
   Tiger controller. `MicroscopeGeometry=SCAPE`, galvo scan, PSEUDO_OVERLAP, two Kinetix22 cameras.
-- Base: upstream 0.8.22 (`7b02b0a`). The rig runs branch `fix/restore-sheet-after-run`
-  (`642a2c4`, on upstream `1fe6c1b`). Build new work on top of it unless told otherwise.
+- Base: upstream 0.8.22 (`7b02b0a`). The rig runs a build of `main` (classes identical to `b1f70e8`,
+  checked 2026-11-28). Branch new work from `main` unless told otherwise.
 - Sheet galvo: `Scanner:AB:33` (ASITiger CScanner), LSM role IllumSlice.
   - Axis A = sheet offset, fixed on the card at -0.7483° (`SingleAxisXOffset(deg)`).
   - Axis B = slice/sweep axis. Centre = B 0°. Beam off ("park") = B at +4°.
   - Firmware soft limits: `MinDeflectionY(deg)` -4, `MaxDeflectionY(deg)` +4 (optics safety, not FOV).
-- Build: `mvn package` with JDK 11 (what CI runs, `.github/workflows/test.yml`). There is no unit
-  test suite. Behaviour on the rig counts only once seen at the rig, from the CoreLog or the
+- Build: `mvn package` with JDK 11 (what CI runs, `.github/workflows/test.yml`) compiles and runs
+  the unit tests in `src/test`. `MMJ_.jar` is not tracked: CI takes it from the pinned nightly and
+  checks `MMJ_SHA256`; locally, copy that jar to `lib/MMJ_.jar`. Unit tests don't reach the
+  hardware: behaviour on the rig counts only once seen at the rig, from the CoreLog or the
   Device Property Browser.
 
 ## 2. Rig safety (never)
